@@ -10,6 +10,7 @@
     "express": "^4.15.3",
     "express-fileupload": "^0.1.4",
     "nodemon": "^1.11.0",
+    "serialport": "^5.0.0-beta7",
     "uws": "^8.14.0"
   },
   "devDependencies": {

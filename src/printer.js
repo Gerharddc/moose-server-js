@@ -2,7 +2,6 @@
 
 import Heater from './heater';
 
-
 let heaters: Array<Heater> = [];
 
 heaters.push(new Heater(0, "Ext 1"));
