@@ -37,8 +37,21 @@ export function resetLineNum(): void {
 
 let sentLineMap = new Map();
 let sentLines = 0;
+const maxSentLines = 20;
 
-export function sendLine(line: string): void {
+export function canSendLine() {
+    return sentLines <= maxSentLines;
+}
+
+function incrementLineNum() {
+    // Wrap line numbers if needed
+    curLineNum++;
+    if (curLineNum > 100000)
+        resetLineNum();
+}
+
+// Synchronously sends line as soon as there is room
+export function sendLine(line: string) {
     if (port === null)
         throw new Error('Printer serial port not open for reading');
 
@@ -54,13 +67,24 @@ export function sendLine(line: string): void {
     line += cs;
 
     sendCode(line);
-    sentLineMap.set(curLineNum, line);
-    sentLines++;
 
-    // Wrap line numbers if needed
-    curLineNum++;
-    if (curLineNum > 100000)
-        resetLineNum();
+    sentLines++;
+    if (sentLines >= maxSentLines) {
+        return new Promise((resolve, reject) => {
+            sentLineMap.set(curLineNum, {
+                line,
+                resolve,
+                reject
+            });
+
+            incrementLineNum();
+        });
+    }
+    else {
+        incrementLineNum();
+
+        return undefined;
+    }
 }
 
 function handleSerialResponse(resp: string): void {
@@ -72,7 +96,14 @@ function handleSerialResponse(resp: string): void {
     }
     else if (resp.includes('ok')) {
         let ln: number = Number(resp.split(' '[1]));
-        sentLineMap.delete(ln);
         sentLines--;
+        let line = sentLineMap.get(ln);
+        let resolve;
+        if (line)
+            resolve = line.resolve;
+
+        sentLineMap.delete(ln);
+        if (resolve)
+            resolve();
     }
 }

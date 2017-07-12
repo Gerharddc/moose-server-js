@@ -1,7 +1,7 @@
 // @ flow
 
 import fs from 'fs';
-const rootPath = '/home/printer';
+export const rootPath = '/home/printer/';
 
 export function listFiles(): Array<string> {
     let _files = [];
