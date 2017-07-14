@@ -1,8 +1,6 @@
 // @flow
 
 import Heater from './heater';
-import LineByLineReader from 'line-by-line';
-import { rootPath } from './files';
 import * as Serial from './serial';
 
 let heaters: Array<Heater> = [];
@@ -49,7 +47,7 @@ export function moveAxis(distance: number, speed:number, forward: boolean, axis:
 }
 
 export function printFile(fileName: string) {
-    let lineReader = new LineByLineReader(rootPath + fileName);
+    /*let lineReader = new LineByLineReader(rootPath + fileName);
 
     lineReader.on('line', line => {
         lineReader.pause();
@@ -68,5 +66,6 @@ export function printFile(fileName: string) {
 
     lineReader.on('end', () => {
         // TODO: notify done with file
-    })
+    })*/
+    Serial.sendFile(fileName);
 }
