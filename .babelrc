@@ -1,5 +1,0 @@
-{
-  "presets": ["env", "flow"],
-  "retainLines": true,
-  "plugins": ["transform-class-properties"]
-}

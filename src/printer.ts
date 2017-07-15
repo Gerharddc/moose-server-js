@@ -1,48 +1,48 @@
-// @flow
+import Heater from "./heater";
+import * as Serial from "./serial";
 
-import Heater from './heater';
-import * as Serial from './serial';
-
-let heaters: Array<Heater> = [];
+const heaters: Heater[] = [];
 
 heaters.push(new Heater(0, "Ext 1"));
 heaters.push(new Heater(1, "Heatbed"));
 
 export function getHeater(id: number): Heater {
-    for (var i = 0; i < heaters.length; i++) {
-        if (heaters[i]._id === id) {
-            return heaters[i];
+    for (const heater of heaters) {
+        if (heater.ID === id) {
+            return heater;
         }
     }
 
-    throw new Error('Heater id not found');
+    throw new Error("Heater id not found");
 }
 
-export function getHeaterList(): Array<number> {
-    let idxs = [];
-    heaters.forEach(heater => {
-        idxs.push(heater._id)
-    });
+export function getHeaterList(): number[] {
+    const idxs: number[] = [];
+    for (const heater of heaters) {
+        idxs.push(heater.ID);
+    }
 
     return idxs;
 }
 
-export function moveAxis(distance: number, speed:number, forward: boolean, axis: string) {
+export function moveAxis(distance: number, speed: number, forward: boolean, axis: string) {
     // TODO
     // Set relative movement
-    Serial.sendLine('G91');
+    Serial.sendLine("G91");
 
     let dist = distance;
-    if (!forward)
+    if (!forward) {
         dist *= -1;
+    }
 
-    let line = 'G1 ';
-    if (['x', 'y', 'z', 'e'].includes(axis))
+    let line = "G1 ";
+    if (axis in ["x", "y", "z", "e"]) {
         line += axis.toUpperCase() + dist;
-    else
-        throw new Error('Unkown axis: ' + axis);
+    } else {
+        throw new Error("Unkown axis: " + axis);
+    }
 
-    line += ' F' + speed;
+    line += " F" + speed;
     Serial.sendLine(line);
 }
 
