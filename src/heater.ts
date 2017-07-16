@@ -1,17 +1,32 @@
 import * as WebSocket from "uws";
 import { Notify } from "./notify";
+import * as Printer from "./printer";
+import * as Serial from "./serial";
 
 const SystemName = "Heater";
 
 export default class Heater {
     private targetTemp: number = 100;
+    private currentTemp: number = 0;
     private id: number;
     private heating: boolean;
     private displayName: string;
+    private heatbed: boolean;
 
-    constructor(id: number, displayName: string) {
+    constructor(id: number, displayName: string, heatbed: boolean = false) {
         this.id = id;
         this.displayName = displayName;
+        this.heatbed = heatbed;
+
+        if (heatbed) {
+            Printer.tempUpdateEmitter.on("BedTemp", (temp) => this.updateTemp(temp));
+        } else {
+            Printer.tempUpdateEmitter.on("ExtTemp", (temp) => this.updateTemp(temp));
+        }
+    }
+
+    get Heatbed(): boolean {
+        return this.heatbed;
     }
 
     get TargetTemp(): number {
@@ -19,10 +34,9 @@ export default class Heater {
     }
     public setTargetTemp(temp: number, setter: WebSocket) {
         if (temp !== this.TargetTemp) {
-            // TODO: send command to printer
-
-            Notify(SystemName, this.id, "TargetTemp", setter);
             this.targetTemp = temp;
+            this.sendTemp();
+            Notify(SystemName, this.id, "TargetTemp", setter);
         }
     }
 
@@ -31,10 +45,9 @@ export default class Heater {
     }
     public setHeating(heating: boolean, setter: WebSocket) {
         if (heating !== this.heating) {
-            // TODO: send command to printer
-
-            Notify(SystemName, this.id, "Heating", setter);
             this.heating = heating;
+            this.sendTemp();
+            Notify(SystemName, this.id, "Heating", setter);
         }
     }
 
@@ -43,20 +56,33 @@ export default class Heater {
     }
     public setDisplayName(displayName: string, setter: WebSocket) {
         if (displayName !== this.displayName) {
-            // TODO: send command to printer
-
-            Notify(SystemName, this.id, "DisplayName", setter);
             this.displayName = displayName;
+            Notify(SystemName, this.id, "DisplayName", setter);
         }
     }
 
-    get currentTemp(): number {
-        // TODO: read from the printer
-
-        return 25;
+    get CurrentTemp(): number {
+        return this.currentTemp;
     }
 
     get ID(): number {
         return this.id;
+    }
+
+    private sendTemp() {
+        const temp = (this.heating) ? this.targetTemp : -300.0;
+
+        if (this.heatbed) {
+            Serial.sendLine("M140 S" + temp);
+        } else {
+            Serial.sendLine("M104 S" + temp);
+        }
+    }
+
+    private updateTemp(temp: number) {
+        if (temp !== this.currentTemp) {
+            this.currentTemp = temp;
+            Notify(SystemName, this.id, "CurrentTemp", null);
+        }
     }
 }

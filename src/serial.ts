@@ -10,10 +10,14 @@ workerProcess.on("message", (msg) => {
             roomForLines = msg.roomForLines;
             break;
         case "callResolve":
-            msg.resolve();
+            msg.resolve(msg.resp);
             break;
         case "notifyPrintDone":
             notifyPrintDone();
+            break;
+        case "emitTemps":
+            Printer.tempUpdateEmitter.emitBedTemp(msg.bedTemp);
+            Printer.tempUpdateEmitter.emitExtTemp(msg.extTemp);
             break;
     }
 });

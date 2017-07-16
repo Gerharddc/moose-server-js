@@ -125,7 +125,7 @@ function checkRoomForLines() {
 
 type CallBack = (msg: string) => void;
 
-// Synchronously sends line as soon as there is room
+// Synchronously sends line
 function sendLine(line: string, resolve?: CallBack | undefined,
                   reject?: CallBack | undefined, externalResolve = false) {
     if (port === null) {
@@ -166,9 +166,38 @@ async function sendLineAsync(line: string) {
     });
 }
 
-function handleSerialResponse(resp: string): void {
-    // TODO
+let watingForTemp = false;
+setInterval(async () => {
+    if (watingForTemp) {
+        return;
+    }
 
+    watingForTemp = true;
+    const resp = String(await sendLineAsync("M105"));
+    const regex = /T:(\d+\.?\d+) B:(\d+\.?\d+)/;
+    const extract = regex.exec(resp);
+
+    let t: number | null = null;
+    let b: number | null = null;
+    if (extract && extract[1] && extract[2]) {
+        t = Number.parseFloat(extract[1]);
+        b = Number.parseFloat(extract[2]);
+    }
+
+    if (t && b) {
+        if (process.send) {
+            process.send({
+                bedTemp: b,
+                extTemp: t,
+                type: "emitTemps",
+            });
+        }
+    } else {
+        console.log("Invalid temp response: " + resp);
+    }
+}, 1000);
+
+function handleSerialResponse(resp: string): void {
     if (resp.includes("rs")) {
         const ln = Number(resp.split(" "[1]));
         sendCode(String(sentLineMap.get(ln)));
@@ -188,10 +217,11 @@ function handleSerialResponse(resp: string): void {
             if (externalResolve && process.send) {
                 process.send({
                     resolve,
+                    resp,
                     type: "callResolve",
                 });
             } else {
-                resolve();
+                resolve(resp);
             }
         }
     }
@@ -221,7 +251,11 @@ function sendFile(filePath: string) {
     });
 
     lineReader.on("end", () => {
-        // TODO: notify done with file
+        if (process.send) {
+            process.send({
+                type: "notifyPrintDone",
+            });
+        }
     });
 
     printFlow.on("pause", () => {

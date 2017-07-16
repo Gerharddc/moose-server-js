@@ -4,8 +4,8 @@ import * as Serial from "./serial";
 
 const heaters: Heater[] = [];
 
-heaters.push(new Heater(0, "Ext 1"));
-heaters.push(new Heater(1, "Heatbed"));
+heaters.push(new Heater(0, "Extruder"));
+heaters.push(new Heater(1, "Heatbed", true));
 
 export function getHeater(id: number): Heater {
     for (const heater of heaters) {
@@ -49,7 +49,7 @@ export function moveAxis(distance: number, speed: number, forward: boolean, axis
 let status = "done";
 
 function notifyStatusChange() {
-    Notify.notify("printer", 0, "status", null);
+    Notify.Notify("printer", 0, "status", null);
 }
 
 export function getStatus(): string {
@@ -84,3 +84,17 @@ export function donePrint() {
     status = "done";
     notifyStatusChange();
 }
+
+import * as EventEmitter from "events";
+
+class TempUpdateEmitter extends EventEmitter {
+    public emitBedTemp(temp: number) {
+        this.emit("BedTemp", temp);
+    }
+
+    public emitExtTemp(temp: number) {
+        this.emit("ExtTemp", temp);
+    }
+}
+
+export const tempUpdateEmitter = new TempUpdateEmitter();

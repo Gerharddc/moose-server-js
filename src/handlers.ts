@@ -45,7 +45,7 @@ const handlerFunctions: any = {
         try {
             const h = Printer.getHeater(data.id);
             return {
-                current: h.currentTemp,
+                current: h.CurrentTemp,
                 displayName: h.DisplayName,
                 isOn: h.Heating,
                 target: h.TargetTemp,
