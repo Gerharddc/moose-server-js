@@ -1,4 +1,5 @@
 import Heater from "./heater";
+import * as Notify from "./notify";
 import * as Serial from "./serial";
 
 const heaters: Heater[] = [];
@@ -26,7 +27,6 @@ export function getHeaterList(): number[] {
 }
 
 export function moveAxis(distance: number, speed: number, forward: boolean, axis: string) {
-    // TODO
     // Set relative movement
     Serial.sendLine("G91");
 
@@ -46,26 +46,41 @@ export function moveAxis(distance: number, speed: number, forward: boolean, axis
     Serial.sendLine(line);
 }
 
+let status = "done";
+
+function notifyStatusChange() {
+    Notify.notify("printer", 0, "status", null);
+}
+
+export function getStatus(): string {
+    return status;
+}
+
 export function printFile(fileName: string) {
-    /*let lineReader = new LineByLineReader(rootPath + fileName);
-
-    lineReader.on('line', line => {
-        lineReader.pause();
-
-        let res = Serial.sendLine(line);
-        if (res instanceof Promise)
-            res.then(m => lineReader.resume());
-        else
-            lineReader.resume();
-    });
-
-    lineReader.on('error', err => {
-        // TODO
-        console.log('Linereader error: ' + err);
-    });
-
-    lineReader.on('end', () => {
-        // TODO: notify done with file
-    })*/
+    status = "printing";
     Serial.sendFile(fileName);
+    notifyStatusChange();
+}
+
+export function pauseFilePrint() {
+    status = "paused";
+    Serial.pauseFileSend();
+    notifyStatusChange();
+}
+
+export function resumeFilePrint() {
+    status = "printing";
+    Serial.resumeFileSend();
+    notifyStatusChange();
+}
+
+export function stopFilePrint() {
+    status = "done";
+    Serial.stopFileSend();
+    notifyStatusChange();
+}
+
+export function donePrint() {
+    status = "done";
+    notifyStatusChange();
 }

@@ -1,4 +1,5 @@
 import * as child_process from "child_process";
+import * as Printer from "./printer";
 
 let roomForLines = false;
 
@@ -11,8 +12,15 @@ workerProcess.on("message", (msg) => {
         case "callResolve":
             msg.resolve();
             break;
+        case "notifyPrintDone":
+            notifyPrintDone();
+            break;
     }
 });
+
+function notifyPrintDone() {
+    Printer.donePrint();
+}
 
 export function sendCode(code: string) {
     workerProcess.send({
@@ -50,5 +58,23 @@ export function sendFile(filePath: string) {
     workerProcess.send({
         action: "sendFile",
         filePath,
+    });
+}
+
+export function pauseFileSend() {
+    workerProcess.send({
+        action: "pauseFile",
+    });
+}
+
+export function resumeFileSend() {
+    workerProcess.send({
+        action: "resumeFile",
+    });
+}
+
+export function stopFileSend() {
+    workerProcess.send({
+        action: "stopFile",
     });
 }

@@ -130,6 +130,10 @@ const handlerFunctions: any = {
             throw new Error("PrintFile: " + e.message);
         }
     },
+
+    GetPrinterStatus: (data: any, client: WebSocket) => {
+        return Printer.getStatus();
+    },
 };
 
 import * as WebSocket from "uws";

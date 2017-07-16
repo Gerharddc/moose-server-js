@@ -1,25 +1,70 @@
+import * as EventEmitter from "events";
 import * as LineByLineReader from "line-by-line";
 import * as SerialPort from "serialport";
 import { rootPath } from "./files";
 
+class PrintFlow extends EventEmitter {
+    private paused: boolean = false;
+    private stopped: boolean = true;
+
+    public pasuePrint() {
+        this.paused = true;
+        this.emit("pause");
+    }
+
+    public resumePrint() {
+        this.paused = false;
+        this.emit("resume");
+    }
+
+    public startPrint() {
+        this.stopped = false;
+        this.emit("start");
+    }
+
+    public stopPrint() {
+        this.stopped = true;
+        this.emit("stop");
+    }
+
+    get Paused(): boolean {
+        return this.paused;
+    }
+
+    get Stopped(): boolean {
+        return this.stopped;
+    }
+}
+
+const printFlow = new PrintFlow();
+
 process.on("message", (msg) => {
-   switch (msg.action) {
-       case "sendCode":
-           sendCode(msg.code);
-           break;
-       case "sendLine":
-           sendLine(msg.line, msg.promise, msg.reject, true);
-           break;
-       case "resetLineNum":
-           resetLineNum();
-           break;
-       case "checkRoomForLines":
-           checkRoomForLines();
-           break;
-       case "sendFile":
-           sendFile(msg.filePath);
-           break;
-   }
+    switch (msg.action) {
+        case "sendCode":
+            sendCode(msg.code);
+            break;
+        case "sendLine":
+            sendLine(msg.line, msg.promise, msg.reject, true);
+            break;
+        case "resetLineNum":
+            resetLineNum();
+            break;
+        case "checkRoomForLines":
+            checkRoomForLines();
+            break;
+        case "sendFile":
+            sendFile(msg.filePath);
+            break;
+        case "pauseFile":
+            printFlow.pasuePrint();
+            break;
+        case "resumeFile":
+            printFlow.resumePrint();
+            break;
+        case "stopFile":
+            printFlow.stopPrint();
+            break;
+    }
 });
 
 let port: SerialPort | null = null;
@@ -156,6 +201,10 @@ function sendFile(filePath: string) {
     const lineReader = new LineByLineReader(rootPath + filePath);
 
     lineReader.on("line", (line) => {
+        if (printFlow.Paused || printFlow.Stopped) {
+            return;
+        }
+
         lineReader.pause();
 
         const res = sendLineAsync(line);
@@ -173,5 +222,18 @@ function sendFile(filePath: string) {
 
     lineReader.on("end", () => {
         // TODO: notify done with file
+    });
+
+    printFlow.on("pause", () => {
+        lineReader.pause();
+    });
+
+    printFlow.on("resume", () => {
+        lineReader.resume();
+    });
+
+    printFlow.on("stop", () => {
+        lineReader.pause();
+        lineReader.close();
     });
 }
