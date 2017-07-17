@@ -11,10 +11,14 @@ export function listFiles(): string[] {
     return files;
 }
 
-export function saveUploadedFile(file: Express.File): void {
+export function saveUploadedFile(file: Express.File) {
     file.mv(rootPath + file.name, (err) => {
         if (err) {
             throw new Error(err);
         }
     });
+}
+
+export async function deleteFile(path: string) {
+    await fs.unlink(path);
 }

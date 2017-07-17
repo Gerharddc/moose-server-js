@@ -1,6 +1,6 @@
 import * as Files from "./files";
 import * as Printer from "./printer";
-import { connectSSID, getSSIDS, scanWifi } from "./wifi";
+import * as Wifi from "./wifi";
 
 type HandlerFunction = (data: any, client: WebSocket) => any;
 
@@ -83,9 +83,21 @@ const handlerFunctions: any = {
         }
     },
 
+    GetCurrentTemp: (data: any, client: WebSocket) => {
+        if (typeof data.id !== "number") {
+            throw new Error("HandleGetCurrentTemp-Error: no id");
+        }
+
+        try {
+            return Printer.getHeater(data.id).currentTemp;
+        } catch (e) {
+            throw new Error("HandleGetHeater-Error: " + e.message);
+        }
+    },
+
     ScanWifi: (data: any, client: WebSocket) => {
         try {
-            scanWifi();
+            Wifi.scanWifi();
         } catch (e) {
             throw new Error("ScanWifi-Error: " + e.message);
         }
@@ -93,15 +105,39 @@ const handlerFunctions: any = {
 
     GetSSIDS: (data: any, client: WebSocket) => {
         try {
-            return getSSIDS();
+            return Wifi.getSSIDS();
         } catch (e) {
             throw new Error("GetSSIDS-Error: " + e.message);
         }
     },
 
+    GetConnectedSSID: (data: any, client: WebSocket) => {
+        try {
+            return Wifi.getConnectedSSID();
+        } catch (e) {
+            throw new Error("GetConnectedSSID-Error: " + e.message);
+        }
+    },
+
     ConnectSSID: (data: any, client: WebSocket) => {
         try {
-            connectSSID(data.ssid);
+            Wifi.connectSSID(data.ssid);
+        } catch (e) {
+            throw new Error("ConnectSSID-Error: " + e.message);
+        }
+    },
+
+    DisconnectWifi: (data: any, client: WebSocket) => {
+        try {
+            Wifi.disconnect();
+        } catch (e) {
+            throw new Error("DisconnectWifi-Error: " + e.message);
+        }
+    },
+
+    SetHosting: (data: any, client: WebSocket) => {
+        try {
+            Wifi.connectSSID(data.ssid);
         } catch (e) {
             throw new Error("ConnectSSID: " + e.message);
         }
@@ -125,9 +161,17 @@ const handlerFunctions: any = {
 
     PrintFile: (data: any, client: WebSocket) => {
         try {
-            return Printer.printFile(data.fileName);
+            return Printer.printFile(data.path);
         } catch (e) {
             throw new Error("PrintFile: " + e.message);
+        }
+    },
+
+    DeleteFile: (data: any, client: WebSocket) => {
+        try {
+            return Files.deleteFile(data.path);
+        } catch (e) {
+            throw new Error("GetFiles-Error: " + e.message);
         }
     },
 };
@@ -144,7 +188,7 @@ export function HandleRequest(message: string, client: WebSocket): string {
             throw new Error("HandleRequest: no request");
         }
 
-        if (!(req.id instanceof Number)) {
+        if (typeof(req.id) !== "number") {
             throw new Error("HandleRequest: no id");
         }
 

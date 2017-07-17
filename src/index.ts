@@ -1,5 +1,5 @@
 import * as express from "express";
-import fileUpload from "express-fileupload";
+import * as fileUpload from "express-fileupload";
 import { saveUploadedFile } from "./files";
 
 const app = express();
@@ -9,22 +9,26 @@ app.get("/test", (req, res) => {
   res.send("Test response!");
 });
 
-app.listen(80, () => {
-  console.log("Example app listening on port 3000!");
-});
+try {
+  app.listen(8000, () => {
+    console.log("Example app listening!");
+  });
+} catch (e) {
+  console.log("Express-listen-error: e");
+}
 
 app.post("/upload", (req, res) => {
-    if (!req.files) {
-      return res.status(400).send("No files were uploaded.");
-    }
+  if (!req.files) {
+    return res.status(400).send("No files were uploaded.");
+  }
 
-    try {
-      req.files.forEach((file) => saveUploadedFile(file));
+  try {
+    req.files.forEach((file) => saveUploadedFile(file));
 
-      res.send("Success");
-    } catch (e) {
-      return res.status(500).send(e.message);
-    }
+    res.send("Success");
+  } catch (e) {
+    return res.status(500).send(e.message);
+  }
 });
 
 import { HandleRequest } from "./handlers";

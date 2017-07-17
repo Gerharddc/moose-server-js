@@ -36,7 +36,7 @@ export function moveAxis(distance: number, speed: number, forward: boolean, axis
     }
 
     let line = "G1 ";
-    if (axis in ["x", "y", "z", "e"]) {
+    if (["x", "y", "z", "e"].indexOf(axis) > -1) {
         line += axis.toUpperCase() + dist;
     } else {
         throw new Error("Unkown axis: " + axis);
@@ -46,26 +46,6 @@ export function moveAxis(distance: number, speed: number, forward: boolean, axis
     Serial.sendLine(line);
 }
 
-export function printFile(fileName: string) {
-    /*let lineReader = new LineByLineReader(rootPath + fileName);
-
-    lineReader.on('line', line => {
-        lineReader.pause();
-
-        let res = Serial.sendLine(line);
-        if (res instanceof Promise)
-            res.then(m => lineReader.resume());
-        else
-            lineReader.resume();
-    });
-
-    lineReader.on('error', err => {
-        // TODO
-        console.log('Linereader error: ' + err);
-    });
-
-    lineReader.on('end', () => {
-        // TODO: notify done with file
-    })*/
-    Serial.sendFile(fileName);
+export function printFile(path: string) {
+    Serial.sendFile(path);
 }
