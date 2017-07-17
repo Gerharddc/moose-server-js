@@ -1,25 +1,70 @@
+import * as EventEmitter from "events";
 import * as LineByLineReader from "line-by-line";
 import * as SerialPort from "serialport";
 import { rootPath } from "./files";
 
+class PrintFlow extends EventEmitter {
+    private paused: boolean = false;
+    private stopped: boolean = true;
+
+    public pasuePrint() {
+        this.paused = true;
+        this.emit("pause");
+    }
+
+    public resumePrint() {
+        this.paused = false;
+        this.emit("resume");
+    }
+
+    public startPrint() {
+        this.stopped = false;
+        this.emit("start");
+    }
+
+    public stopPrint() {
+        this.stopped = true;
+        this.emit("stop");
+    }
+
+    get Paused(): boolean {
+        return this.paused;
+    }
+
+    get Stopped(): boolean {
+        return this.stopped;
+    }
+}
+
+const printFlow = new PrintFlow();
+
 process.on("message", (msg) => {
-   switch (msg.action) {
-       case "sendCode":
-           sendCode(msg.code);
-           break;
-       case "sendLine":
-           sendLine(msg.line, msg.promise, msg.reject, true);
-           break;
-       case "resetLineNum":
-           resetLineNum();
-           break;
-       case "checkRoomForLines":
-           checkRoomForLines();
-           break;
-       case "sendFile":
-           sendFile(msg.filePath);
-           break;
-   }
+    switch (msg.action) {
+        case "sendCode":
+            sendCode(msg.code);
+            break;
+        case "sendLine":
+            sendLine(msg.line, msg.promise, msg.reject, true);
+            break;
+        case "resetLineNum":
+            resetLineNum();
+            break;
+        case "checkRoomForLines":
+            checkRoomForLines();
+            break;
+        case "sendFile":
+            sendFile(msg.filePath);
+            break;
+        case "pauseFile":
+            printFlow.pasuePrint();
+            break;
+        case "resumeFile":
+            printFlow.resumePrint();
+            break;
+        case "stopFile":
+            printFlow.stopPrint();
+            break;
+    }
 });
 
 let port: SerialPort | null = null;
@@ -80,7 +125,7 @@ function checkRoomForLines() {
 
 type CallBack = (msg: string) => void;
 
-// Synchronously sends line as soon as there is room
+// Synchronously sends line
 function sendLine(line: string, resolve?: CallBack | undefined,
                   reject?: CallBack | undefined, externalResolve = false) {
     if (port === null) {
@@ -121,9 +166,38 @@ async function sendLineAsync(line: string) {
     });
 }
 
-function handleSerialResponse(resp: string): void {
-    // TODO
+let watingForTemp = false;
+setInterval(async () => {
+    if (watingForTemp) {
+        return;
+    }
 
+    watingForTemp = true;
+    const resp = String(await sendLineAsync("M105"));
+    const regex = /T:(\d+\.?\d+) B:(\d+\.?\d+)/;
+    const extract = regex.exec(resp);
+
+    let t: number | null = null;
+    let b: number | null = null;
+    if (extract && extract[1] && extract[2]) {
+        t = Number.parseFloat(extract[1]);
+        b = Number.parseFloat(extract[2]);
+    }
+
+    if (t && b) {
+        if (process.send) {
+            process.send({
+                bedTemp: b,
+                extTemp: t,
+                type: "emitTemps",
+            });
+        }
+    } else {
+        console.log("Invalid temp response: " + resp);
+    }
+}, 1000);
+
+function handleSerialResponse(resp: string): void {
     if (resp.includes("rs")) {
         const ln = Number(resp.split(" "[1]));
         sendCode(String(sentLineMap.get(ln)));
@@ -143,10 +217,11 @@ function handleSerialResponse(resp: string): void {
             if (externalResolve && process.send) {
                 process.send({
                     resolve,
+                    resp,
                     type: "callResolve",
                 });
             } else {
-                resolve();
+                resolve(resp);
             }
         }
     }
@@ -156,6 +231,10 @@ function sendFile(filePath: string) {
     const lineReader = new LineByLineReader(rootPath + filePath);
 
     lineReader.on("line", (line) => {
+        if (printFlow.Paused || printFlow.Stopped) {
+            return;
+        }
+
         lineReader.pause();
 
         const res = sendLineAsync(line);
@@ -172,6 +251,23 @@ function sendFile(filePath: string) {
     });
 
     lineReader.on("end", () => {
-        // TODO: notify done with file
+        if (process.send) {
+            process.send({
+                type: "notifyPrintDone",
+            });
+        }
+    });
+
+    printFlow.on("pause", () => {
+        lineReader.pause();
+    });
+
+    printFlow.on("resume", () => {
+        lineReader.resume();
+    });
+
+    printFlow.on("stop", () => {
+        lineReader.pause();
+        lineReader.close();
     });
 }

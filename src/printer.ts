@@ -1,10 +1,11 @@
 import Heater from "./heater";
+import * as Notify from "./notify";
 import * as Serial from "./serial";
 
 const heaters: Heater[] = [];
 
-heaters.push(new Heater(0, "Ext 1"));
-heaters.push(new Heater(1, "Heatbed"));
+heaters.push(new Heater(0, "Extruder"));
+heaters.push(new Heater(1, "Heatbed", true));
 
 export function getHeater(id: number): Heater {
     for (const heater of heaters) {
@@ -26,7 +27,6 @@ export function getHeaterList(): number[] {
 }
 
 export function moveAxis(distance: number, speed: number, forward: boolean, axis: string) {
-    // TODO
     // Set relative movement
     Serial.sendLine("G91");
 
@@ -46,6 +46,55 @@ export function moveAxis(distance: number, speed: number, forward: boolean, axis
     Serial.sendLine(line);
 }
 
-export function printFile(path: string) {
-    Serial.sendFile(path);
+let status = "done";
+
+function notifyStatusChange() {
+    Notify.Notify("printer", 0, "status", null);
 }
+
+export function getStatus(): string {
+    return status;
+}
+
+export function printFile(fileName: string) {
+    status = "printing";
+    Serial.sendFile(fileName);
+    notifyStatusChange();
+}
+
+export function pauseFilePrint() {
+    status = "paused";
+    Serial.pauseFileSend();
+    notifyStatusChange();
+}
+
+export function resumeFilePrint() {
+    status = "printing";
+    Serial.resumeFileSend();
+    notifyStatusChange();
+}
+
+export function stopFilePrint() {
+    status = "done";
+    Serial.stopFileSend();
+    notifyStatusChange();
+}
+
+export function donePrint() {
+    status = "done";
+    notifyStatusChange();
+}
+
+import * as EventEmitter from "events";
+
+class TempUpdateEmitter extends EventEmitter {
+    public emitBedTemp(temp: number) {
+        this.emit("BedTemp", temp);
+    }
+
+    public emitExtTemp(temp: number) {
+        this.emit("ExtTemp", temp);
+    }
+}
+
+export const tempUpdateEmitter = new TempUpdateEmitter();
