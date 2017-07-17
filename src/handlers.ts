@@ -119,6 +119,14 @@ const handlerFunctions: any = {
         }
     },
 
+    GetConnectionState: (data: any, client: WebSocket) => {
+        try {
+            return Wifi.getConnectedSSID();
+        } catch (e) {
+            throw new Error("GetConnectedSSID-Error: " + e.message);
+        }
+    },
+
     ConnectSSID: (data: any, client: WebSocket) => {
         try {
             Wifi.connectSSID(data.ssid);
