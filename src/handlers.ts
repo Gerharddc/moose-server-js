@@ -33,6 +33,18 @@ const handlerFunctions: any = {
         }
     },
 
+    GetTargetTemp: (data: any, client: WebSocket) => {
+        if (typeof data.id !== "number") {
+            throw new Error("HandleGetTargetTemp-Error: no id");
+        }
+
+        try {
+            return Printer.getHeater(data.id).TargetTemp;
+        } catch (e) {
+            throw new Error("HandleGetTargetTemp-Error: " + e.message);
+        }
+    },
+
     GetHeaters: (data: any, client: WebSocket) => {
         return Printer.getHeaterList();
     },
@@ -45,7 +57,7 @@ const handlerFunctions: any = {
         try {
             const h = Printer.getHeater(data.id);
             return {
-                current: h.CurrentTemp,
+                current: h.currentTemp,
                 displayName: h.DisplayName,
                 isOn: h.Heating,
                 target: h.TargetTemp,
