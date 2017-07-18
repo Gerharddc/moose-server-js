@@ -129,7 +129,7 @@ type CallBack = (msg: string) => void;
 function sendLine(line: string, resolve?: CallBack | undefined,
                   reject?: CallBack | undefined, externalResolve = false) {
     if (port === null) {
-        throw new Error("Printer serial port not open for reading");
+        throw new Error("Printer serial port not open for writing");
     }
 
     // Remove comments
@@ -271,3 +271,5 @@ function sendFile(filePath: string) {
         lineReader.close();
     });
 }
+
+checkRoomForLines();

@@ -22,6 +22,10 @@ workerProcess.on("message", (msg) => {
     }
 });
 
+if (!workerProcess) {
+    console.log("O fok forking error!");
+}
+
 function notifyPrintDone() {
     Printer.donePrint();
 }

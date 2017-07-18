@@ -1,3 +1,17 @@
+import * as EventEmitter from "events";
+
+class TempUpdateEmitter extends EventEmitter {
+    public emitBedTemp(temp: number) {
+        this.emit("BedTemp", temp);
+    }
+
+    public emitExtTemp(temp: number) {
+        this.emit("ExtTemp", temp);
+    }
+}
+
+export const tempUpdateEmitter = new TempUpdateEmitter();
+
 import Heater from "./heater";
 import * as Notify from "./notify";
 import * as Serial from "./serial";
@@ -84,17 +98,3 @@ export function donePrint() {
     status = "done";
     notifyStatusChange();
 }
-
-import * as EventEmitter from "events";
-
-class TempUpdateEmitter extends EventEmitter {
-    public emitBedTemp(temp: number) {
-        this.emit("BedTemp", temp);
-    }
-
-    public emitExtTemp(temp: number) {
-        this.emit("ExtTemp", temp);
-    }
-}
-
-export const tempUpdateEmitter = new TempUpdateEmitter();

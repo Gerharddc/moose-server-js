@@ -89,7 +89,7 @@ const handlerFunctions: any = {
         }
 
         try {
-            return Printer.getHeater(data.id).currentTemp;
+            return Printer.getHeater(data.id).CurrentTemp;
         } catch (e) {
             throw new Error("HandleGetHeater-Error: " + e.message);
         }
@@ -121,7 +121,7 @@ const handlerFunctions: any = {
 
     GetConnectionState: (data: any, client: WebSocket) => {
         try {
-            return Wifi.getConnectedSSID();
+            return Wifi.getConnectionState();
         } catch (e) {
             throw new Error("GetConnectedSSID-Error: " + e.message);
         }
@@ -143,9 +143,17 @@ const handlerFunctions: any = {
         }
     },
 
+    GetHosting: (data: any, client: WebSocket) => {
+        try {
+            return Wifi.getHosting();
+        } catch (e) {
+            throw new Error("GetConnectedSSID-Error: " + e.message);
+        }
+    },
+
     SetHosting: (data: any, client: WebSocket) => {
         try {
-            Wifi.connectSSID(data.ssid);
+            Wifi.setHosting(data.hosting, data.ssid, data.passphrase, client);
         } catch (e) {
             throw new Error("ConnectSSID: " + e.message);
         }

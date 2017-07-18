@@ -1,4 +1,5 @@
 import * as ConnMan from "connman-node-api";
+import * as WebSocket from "uws";
 import { Notify } from "./notify";
 
 const ssids: string[] = [];
@@ -39,9 +40,10 @@ let Hosting = false;
 let HostingSSID = "";
 let HostingPWD = "";
 
-export function setHosting(hosting: boolean, ssid: string, passphrase: string) {
+export function setHosting(hosting: boolean, ssid: string, passphrase: string,
+                           client: WebSocket) {
     // TODO
-    Hosting = hosting;
+    /*Hosting = hosting;
     HostingSSID = ssid;
     HostingPWD = passphrase;
 
@@ -51,5 +53,14 @@ export function setHosting(hosting: boolean, ssid: string, passphrase: string) {
         conState = "inactive";
     }
 
-    Notify("wifi", 0, "connctionState", null);
+    console.log("Constate now: " + conState);
+    Notify("Wifi", 0, "ConnectionState", null);*/
+
+    if (hosting !== Hosting) {
+        Hosting = hosting;
+        HostingSSID = ssid;
+        HostingPWD = passphrase;
+    }
+
+    Notify("Wifi", 0, "Hosting", client);
 }
