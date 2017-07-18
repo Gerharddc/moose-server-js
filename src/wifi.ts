@@ -17,14 +17,32 @@ export function getSSIDS() {
 
 export function scanWifi() {
     console.log("Called for scan");
+
+    ssids.push("BS newtork");
+    ssids.push("Random");
 }
+
+let connectedSSID = "";
 
 export function connectSSID(ssid: string) {
     // TODO
+
+    if (ssid === connectedSSID) {
+        return;
+    }
+
+    if (ssids.indexOf(ssid) < 0) {
+        throw new Error("SSID not available");
+    }
+
+    connectedSSID = ssid;
+    Notify("Wifi", 0, "ConnectedSSID", null);
 }
 
 export function getConnectedSSID() {
     // TODO
+
+    return connectedSSID;
 }
 
 let conState = "inactive";
@@ -39,6 +57,10 @@ export function disconnect() {
 let Hosting = false;
 let HostingSSID = "";
 let HostingPWD = "";
+
+export function getHosting() {
+    return Hosting;
+}
 
 export function setHosting(hosting: boolean, ssid: string, passphrase: string,
                            client: WebSocket) {
