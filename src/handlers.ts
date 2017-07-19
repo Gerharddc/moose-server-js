@@ -111,6 +111,14 @@ const handlerFunctions: any = {
         }
     },
 
+    GetConnected: (data: any, client: WebSocket) => {
+        try {
+            return Wifi.getConnected();
+        } catch (e) {
+            throw new Error("GetConnected-Error: " + e.message);
+        }
+    },
+
     GetConnectedSSID: (data: any, client: WebSocket) => {
         try {
             return Wifi.getConnectedSSID();
@@ -119,17 +127,9 @@ const handlerFunctions: any = {
         }
     },
 
-    GetConnectionState: (data: any, client: WebSocket) => {
-        try {
-            return Wifi.getConnectionState();
-        } catch (e) {
-            throw new Error("GetConnectedSSID-Error: " + e.message);
-        }
-    },
-
     ConnectSSID: (data: any, client: WebSocket) => {
         try {
-            Wifi.connectSSID(data.ssid, data.password);
+            Wifi.connectSSID(data.ssid, data.pwd);
         } catch (e) {
             throw new Error("ConnectSSID-Error: " + e.message);
         }
@@ -232,13 +232,19 @@ export function HandleRequest(message: string, client: WebSocket): string {
             throw new Error("HandleRequest: no request");
         }
 
-        if (typeof(req.id) !== "number") {
+        if (typeof (req.id) !== "number") {
             throw new Error("HandleRequest: no id");
         }
 
-        let resp = handlerFunctions[req.request](req.data, client);
-        if (resp === undefined) {
-            resp = null;
+        const func = handlerFunctions[req.request];
+        let resp = null;
+        if (func) {
+            resp = func(req.data, client);
+            if (resp === undefined) {
+                resp = null;
+            }
+        } else {
+            console.log("Unkown request: " + req.request);
         }
 
         return JSON.stringify({

@@ -9,6 +9,10 @@ class SSID {
 
 const ssids: SSID[] = [];
 
+let connected = false;
+let connectedSSID = "";
+let connectingPassword = "";
+
 const connman = new ConnMan();
 let wifi: ConnMan.Technology | null = null;
 connman.init((err) => {
@@ -40,11 +44,11 @@ connman.init((err) => {
     connman.Agent.on("RequestInput", (path, dict, callback) => {
         console.log("Connman agent RequestInput: ");
         console.log(dict);
-        /*
-                if ('Passphrase' in dict) {
-                    callback({ 'Passphrase': '12345' });
-                }
-        */
+
+        if ("Passphrase" in dict) {
+            callback({ Passphrase: connectingPassword });
+        }
+
     });
 
     connman.Agent.on("Cancel", () => {
@@ -78,43 +82,43 @@ export function scanWifi() {
     });
 }
 
-let connectedSSID = "";
-let connectingPassword = "";
-
 export function connectSSID(ssid: string, password: string) {
-    // TODO
-
     if (ssid === connectedSSID) {
         return;
     }
 
-    /*let ss = null;
-    for (const s of ssids) {
-        if (s.Name === ssid) {
-            ss = s;
-        }
-    }
-
-    if (!ss) {
-        throw new Error("SSID not available");
-    }
-
-    if (ss.Secured && password === "") {
-        throw new Error("SSID requires a password");
-    }*/
-
     if (!wifi) {
         throw new Error("Wifi technology not available");
     }
+
+    connectingPassword = password;
 
     wifi.findAccessPoint(ssid, (err, service) => {
         if (!service) {
             throw new Error("No such access point");
         }
 
+        const notifyConnected = () => {
+            connected = true;
+            connectedSSID = ssid;
+            Notify("Wifi", 0, "ConnectedSSID", null);
+            Notify("Wifi", 0, "Connected", null);
+        };
+
+        const notifyDisConnected = () => {
+            connected = false;
+            connectedSSID = "";
+            Notify("Wifi", 0, "ConnectedSSID", null);
+            Notify("Wifi", 0, "Connected", null);
+        };
+
         service.connect((error, agent) => {
             if (error) {
                 console.log("Wifi connect error: " + error);
+                notifyDisConnected();
+            } else {
+                connected = true;
+                notifyConnected();
             }
         });
 
@@ -123,7 +127,8 @@ export function connectSSID(ssid: string, password: string) {
             if (name === "State") {
                 switch (value) {
                     case "failure":
-                        console.log("Connection failed"); // TODO
+                        console.log("Connection failed");
+                        notifyDisConnected();
                         break;
                     case "association":
                         console.log("Associating ...");
@@ -135,25 +140,20 @@ export function connectSSID(ssid: string, password: string) {
                         console.log("Online...");
                     case "ready":
                         console.log("Connected");
+                        notifyConnected();
                         break;
                 }
             }
         });
     });
-
-    // connectedSSID = ssid;
-    // Notify("Wifi", 0, "ConnectedSSID", null);
 }
 
 export function getConnectedSSID() {
-    // TODO
-
     return connectedSSID;
 }
 
-let conState = "inactive";
-export function getConnectionState() {
-    return conState;
+export function getConnected() {
+    return connected;
 }
 
 export function disconnect() {
@@ -223,28 +223,3 @@ export function stopHosting(client: WebSocket) {
         }
     });
 }
-
-/*export function setHosting(hosting: boolean, ssid: string, passphrase: string,
-    client: WebSocket) {
-    // TODO
-    /*Hosting = hosting;
-    HostingSSID = ssid;
-    HostingPWD = passphrase;
-
-    if (hosting) {
-        conState = "hosting";
-    } else {
-        conState = "inactive";
-    }
-
-    console.log("Constate now: " + conState);
-    Notify("Wifi", 0, "ConnectionState", null);*
-
-    if (hosting !== Hosting) {
-        Hosting = hosting;
-        HostingSSID = ssid;
-        HostingPWD = passphrase;
-    }
-
-    Notify("Wifi", 0, "Hosting", client);
-}*/
