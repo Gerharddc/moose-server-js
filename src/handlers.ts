@@ -129,7 +129,7 @@ const handlerFunctions: any = {
 
     ConnectSSID: (data: any, client: WebSocket) => {
         try {
-            Wifi.connectSSID(data.ssid);
+            Wifi.connectSSID(data.ssid, data.password);
         } catch (e) {
             throw new Error("ConnectSSID-Error: " + e.message);
         }
