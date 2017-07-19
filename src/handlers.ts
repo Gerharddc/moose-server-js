@@ -151,11 +151,35 @@ const handlerFunctions: any = {
         }
     },
 
-    SetHosting: (data: any, client: WebSocket) => {
+    GetHostingSSID: (data: any, client: WebSocket) => {
         try {
-            Wifi.setHosting(data.hosting, data.ssid, data.passphrase, client);
+            return Wifi.getHostingSSID();
         } catch (e) {
-            throw new Error("ConnectSSID: " + e.message);
+            throw new Error("GetHostingSSID-Error: " + e.message);
+        }
+    },
+
+    GetHostingPWD: (data: any, client: WebSocket) => {
+        try {
+            return Wifi.getHostingPWD();
+        } catch (e) {
+            throw new Error("GetHostingPWD-Error: " + e.message);
+        }
+    },
+
+    StartHosting: (data: any, client: WebSocket) => {
+        try {
+            Wifi.startHosting(data.ssid, data.pwd, client);
+        } catch (e) {
+            throw new Error("StartHosting-Error: " + e.message);
+        }
+    },
+
+    StopHosting: (data: any, client: WebSocket) => {
+        try {
+            Wifi.stopHosting(client);
+        } catch (e) {
+            throw new Error("StartHosting-Error: " + e.message);
         }
     },
 

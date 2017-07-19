@@ -30,6 +30,8 @@ declare module "connman-node-api" {
             scan: (callback: () => void) => void;
             listAccessPoints: (callback: (err: Error, list: AccessPoint[]) => void) => void;
             findAccessPoint: (ssid: string, callback: (err: string, service: Service) => void) => void;
+            enableTethering: (ssid: string, pwd: string, callback: (err: string) => void) => void;
+            disableTethering: (callback: (err: string, res: string) => void) => void;
         }
     }
     export = ConnMan;

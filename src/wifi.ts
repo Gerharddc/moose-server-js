@@ -122,20 +122,20 @@ export function connectSSID(ssid: string, password: string) {
             console.log(name + " = " + value);
             if (name === "State") {
                 switch (value) {
-                case "failure":
-                    console.log("Connection failed"); // TODO
-                    break;
-                case "association":
-                    console.log("Associating ...");
-                    break;
-                case "configuration":
-                    console.log("Configuring ...");
-                    break;
-                case "online":
-                    console.log("Online...");
-                case "ready":
-                    console.log("Connected");
-                    break;
+                    case "failure":
+                        console.log("Connection failed"); // TODO
+                        break;
+                    case "association":
+                        console.log("Associating ...");
+                        break;
+                    case "configuration":
+                        console.log("Configuring ...");
+                        break;
+                    case "online":
+                        console.log("Online...");
+                    case "ready":
+                        console.log("Connected");
+                        break;
                 }
             }
         });
@@ -161,14 +161,70 @@ export function disconnect() {
 }
 
 let Hosting = false;
-let HostingSSID = "";
-let HostingPWD = "";
+let HostingSSID = "MooseNet";
+let HostingPWD = "MoosePass";
 
 export function getHosting() {
     return Hosting;
 }
 
-export function setHosting(hosting: boolean, ssid: string, passphrase: string,
+export function getHostingSSID() {
+    return HostingSSID;
+}
+
+export function getHostingPWD() {
+    return HostingPWD;
+}
+
+export function startHosting(ssid: string, pwd: string, client: WebSocket) {
+    if (ssid !== HostingSSID) {
+        HostingSSID = ssid;
+        Notify("Wifi", 0, "HostingSSID", client);
+    }
+
+    if (pwd !== HostingPWD) {
+        HostingPWD = pwd;
+        Notify("Wifi", 0, "HostingPWD", client);
+    }
+
+    if (!Hosting) {
+        Hosting = true;
+        Notify("Wifi", 0, "Hosting", client);
+    }
+
+    if (!wifi) {
+        throw new Error("Wifi technology not available");
+    }
+
+    wifi.enableTethering(HostingSSID, HostingPWD, (err) => {
+        if (!err) {
+            console.log("Tethering enabled");
+        } else {
+            console.log(err);
+        }
+    });
+}
+
+export function stopHosting(client: WebSocket) {
+    if (Hosting) {
+        Hosting = false;
+        Notify("Wifi", 0, "Hosting", client);
+    }
+
+    if (!wifi) {
+        throw new Error("Wifi technology not available");
+    }
+
+    wifi.disableTethering((err, res) => {
+        if (!err) {
+            console.log("Tethering disabled");
+        } else {
+            console.log(err);
+        }
+    });
+}
+
+/*export function setHosting(hosting: boolean, ssid: string, passphrase: string,
     client: WebSocket) {
     // TODO
     /*Hosting = hosting;
@@ -182,7 +238,7 @@ export function setHosting(hosting: boolean, ssid: string, passphrase: string,
     }
 
     console.log("Constate now: " + conState);
-    Notify("Wifi", 0, "ConnectionState", null);*/
+    Notify("Wifi", 0, "ConnectionState", null);*
 
     if (hosting !== Hosting) {
         Hosting = hosting;
@@ -191,4 +247,4 @@ export function setHosting(hosting: boolean, ssid: string, passphrase: string,
     }
 
     Notify("Wifi", 0, "Hosting", client);
-}
+}*/
