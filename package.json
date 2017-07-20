@@ -13,7 +13,7 @@
     "@types/line-by-line": "^0.1.1",
     "@types/serialport": "^4.0.9",
     "@types/uws": "^0.13.0",
-    "connman-node-api": "^0.4.0",
+    "connman-node-api": "^0.4.1",
     "express": "^4.15.3",
     "express-fileupload": "^0.1.4",
     "line-by-line": "^0.1.5",
