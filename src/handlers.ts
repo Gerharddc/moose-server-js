@@ -215,6 +215,30 @@ const handlerFunctions: any = {
         }
     },
 
+    PausePrint: (data: any, client: WebSocket) => {
+        try {
+            return Printer.pauseFilePrint();
+        } catch (e) {
+            throw new Error("PausePrint-Error: " + e.message);
+        }
+    },
+
+    ResumePrint: (data: any, client: WebSocket) => {
+        try {
+            return Printer.resumeFilePrint();
+        } catch (e) {
+            throw new Error("ResumePrint-Error: " + e.message);
+        }
+    },
+
+    StopPrint: (data: any, client: WebSocket) => {
+        try {
+            return Printer.stopFilePrint();
+        } catch (e) {
+            throw new Error("StopPrint-Error: " + e.message);
+        }
+    },
+
     GetPrinting: (data: any, client: WebSocket) => {
         try {
             return Printer.getPrinting();
