@@ -10,10 +10,10 @@ class SSID {
 const ssids: SSID[] = [];
 
 let connected = false;
-let connectedSSID = "";
+let connectedSSID: SSID | null = null;
 let connectingPassword = "";
 
-const connman = new ConnMan();
+const connman = new ConnMan(true);
 let wifi: ConnMan.Technology | null = null;
 connman.init((err) => {
     if (err instanceof Error) {
@@ -26,34 +26,43 @@ connman.init((err) => {
 
     if (!wifi) {
         console.log("Could not get wifi technology");
+    } else {
+        // Ensure the wifi is on
+        wifi.setProperty("Powered", true, () => {
+            console.log("Enabled wifi");
+        });
     }
 
-    connman.Agent.on("Release", () => {
-        console.log("Connman agent release");
-    });
+    if (connman.Agent) {
+        connman.Agent.on("Release", () => {
+            console.log("Connman agent release");
+        });
 
-    connman.Agent.on("ReportError", (path, error) => {
-        console.log("Connaman agent ReportError:");
-        console.log(error);
-    });
+        connman.Agent.on("ReportError", (path, error) => {
+            console.log("Connaman agent ReportError:");
+            console.log(error);
+        });
 
-    connman.Agent.on("RequestBrowser", (path, url) => {
-        console.log("Connman agent RequestBrowser");
-    });
+        connman.Agent.on("RequestBrowser", (path, url) => {
+            console.log("Connman agent RequestBrowser");
+        });
 
-    connman.Agent.on("RequestInput", (path, dict, callback) => {
-        console.log("Connman agent RequestInput: ");
-        console.log(dict);
+        connman.Agent.on("RequestInput", (path, dict, callback) => {
+            console.log("Connman agent RequestInput: ");
+            console.log(dict);
 
-        if ("Passphrase" in dict) {
-            callback({ Passphrase: connectingPassword });
-        }
+            if ("Passphrase" in dict) {
+                callback({ Passphrase: connectingPassword });
+            }
 
-    });
+        });
 
-    connman.Agent.on("Cancel", () => {
-        console.log("Connman agent canceled");
-    });
+        connman.Agent.on("Cancel", () => {
+            console.log("Connman agent canceled");
+        });
+    } else {
+        console.log("Error: agent unavailable");
+    }
 });
 
 export function getSSIDS() {
@@ -78,11 +87,13 @@ export function scanWifi() {
                     Secured: ap.Security !== "none",
                 });
             }
+
+            Notify("Wifi", 0, "SSIDS", null);
         });
     });
 }
 
-export function connectSSID(ssid: string, password: string) {
+export function connectSSID(ssid: SSID, password: string) {
     if (ssid === connectedSSID) {
         return;
     }
@@ -93,9 +104,13 @@ export function connectSSID(ssid: string, password: string) {
 
     connectingPassword = password;
 
-    wifi.findAccessPoint(ssid, (err, service) => {
+    wifi.findAccessPoint(ssid.Name, (err, service) => {
         if (!service) {
             throw new Error("No such access point");
+        }
+
+        if (!service.connect) {
+            throw new Error("Service is fucked");
         }
 
         const notifyConnected = () => {
@@ -107,7 +122,7 @@ export function connectSSID(ssid: string, password: string) {
 
         const notifyDisConnected = () => {
             connected = false;
-            connectedSSID = "";
+            connectedSSID = null;
             Notify("Wifi", 0, "ConnectedSSID", null);
             Notify("Wifi", 0, "Connected", null);
         };
