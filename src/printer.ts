@@ -60,41 +60,57 @@ export function moveAxis(distance: number, speed: number, forward: boolean, axis
     Serial.sendLine(line);
 }
 
-let status = "done";
+let printing = false;
+let paused = false;
+let progress = 50;
+let eta = "10m 30s";
 
-function notifyStatusChange() {
-    Notify.Notify("printer", 0, "status", null);
+export function getPrinting() {
+    return printing;
 }
 
-export function getStatus(): string {
-    return status;
+export function getPaused() {
+    return paused;
+}
+
+export function getProgress() {
+    return progress;
+}
+
+export function getETA() {
+    return eta;
+}
+
+function setPrinting(val: boolean) {
+    printing = val;
+    Notify.Notify("Printer", 0, "Printing", null);
+}
+
+function setPaused(val: boolean) {
+    paused = val;
+    Notify.Notify("Printer", 0, "Paused", null);
 }
 
 export function printFile(fileName: string) {
-    status = "printing";
     Serial.sendFile(fileName);
-    notifyStatusChange();
+    setPrinting(true);
 }
 
 export function pauseFilePrint() {
-    status = "paused";
     Serial.pauseFileSend();
-    notifyStatusChange();
+    setPaused(true);
 }
 
 export function resumeFilePrint() {
-    status = "printing";
     Serial.resumeFileSend();
-    notifyStatusChange();
+    setPaused(false);
 }
 
 export function stopFilePrint() {
-    status = "done";
     Serial.stopFileSend();
-    notifyStatusChange();
+    setPrinting(true);
 }
 
 export function donePrint() {
-    status = "done";
-    notifyStatusChange();
+    setPrinting(false);
 }
