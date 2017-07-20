@@ -215,8 +215,60 @@ const handlerFunctions: any = {
         }
     },
 
-    GetPrinterStatus: (data: any, client: WebSocket) => {
-        return Printer.getStatus();
+    PausePrint: (data: any, client: WebSocket) => {
+        try {
+            return Printer.pauseFilePrint();
+        } catch (e) {
+            throw new Error("PausePrint-Error: " + e.message);
+        }
+    },
+
+    ResumePrint: (data: any, client: WebSocket) => {
+        try {
+            return Printer.resumeFilePrint();
+        } catch (e) {
+            throw new Error("ResumePrint-Error: " + e.message);
+        }
+    },
+
+    StopPrint: (data: any, client: WebSocket) => {
+        try {
+            return Printer.stopFilePrint();
+        } catch (e) {
+            throw new Error("StopPrint-Error: " + e.message);
+        }
+    },
+
+    GetPrinting: (data: any, client: WebSocket) => {
+        try {
+            return Printer.getPrinting();
+        } catch (e) {
+            throw new Error("GetPrinting-Error: " + e.message);
+        }
+    },
+
+    GetPaused: (data: any, client: WebSocket) => {
+        try {
+            return Printer.getPaused();
+        } catch (e) {
+            throw new Error("GetPaused-Error: " + e.message);
+        }
+    },
+
+    GetProgress: (data: any, client: WebSocket) => {
+        try {
+            return Printer.getProgress();
+        } catch (e) {
+            throw new Error("GetProgress-Error: " + e.message);
+        }
+    },
+
+    GetETA: (data: any, client: WebSocket) => {
+        try {
+            return Printer.getETA();
+        } catch (e) {
+            throw new Error("GetETA-Error: " + e.message);
+        }
     },
 };
 
