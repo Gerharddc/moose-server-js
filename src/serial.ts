@@ -1,4 +1,5 @@
 import * as child_process from "child_process";
+import { NotifyError } from "./notify";
 import * as Printer from "./printer";
 
 let roomForLines = false;
@@ -18,6 +19,9 @@ workerProcess.on("message", (msg) => {
         case "emitTemps":
             Printer.tempUpdateEmitter.emitBedTemp(msg.bedTemp);
             Printer.tempUpdateEmitter.emitExtTemp(msg.extTemp);
+            break;
+        case "error":
+            NotifyError(msg.error);
             break;
     }
 });

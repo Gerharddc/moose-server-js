@@ -44,6 +44,10 @@ connman.init((err) => {
             if (name === "Connected" && value === false) {
                 notifyDisConnected();
             }
+            if (name === "Tethering") {
+                Hosting = value;
+                Notify("Wifi", 0, "Hosting", null);
+            }
         });
 
         wifi.getProperties((error, props) => {
@@ -248,6 +252,11 @@ export function connectSSID(ssid: SSID, password: string) {
         });
     };
 
+    if (Hosting) {
+        // TODO
+        stopHosting(null);
+    }
+
     wifi.getServices((err, services) => {
         for (const serviceName in services) {
             if (services[serviceName].Name === ssid.Name) {
@@ -316,10 +325,7 @@ export function startHosting(ssid: string, pwd: string, client: WebSocket | null
         throw new Error("Wifi technology not available");
     }
 
-    if (!Hosting) {
-        Hosting = true;
-        Notify("Wifi", 0, "Hosting", client);
-    } else if (changed) {
+    if (Hosting) {
         wifi.disableTethering((err, res) => {
             if (!err) {
                 console.log("Tethering disabled");
@@ -338,12 +344,7 @@ export function startHosting(ssid: string, pwd: string, client: WebSocket | null
     });
 }
 
-export function stopHosting(client: WebSocket) {
-    if (Hosting) {
-        Hosting = false;
-        Notify("Wifi", 0, "Hosting", client);
-    }
-
+export function stopHosting(client: WebSocket | null) {
     if (!wifi) {
         throw new Error("Wifi technology not available");
     }

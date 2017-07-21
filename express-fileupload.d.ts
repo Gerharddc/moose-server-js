@@ -10,7 +10,11 @@ declare namespace Express {
         name: string
     }
 
+    interface FileDict {
+        [index: string]: File[];
+    }
+
     export interface Request {
-        files: File[]
+        files: FileDict
     }
 }

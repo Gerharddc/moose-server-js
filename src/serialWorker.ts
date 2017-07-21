@@ -87,9 +87,19 @@ try {
     console.log("SerialPort-error: " + e.message);
 }
 
+function reportError(error: string) {
+    if (process.send) {
+        process.send({
+            error,
+            type: "error",
+        });
+    }
+}
+
 export function sendCode(code: string) {
     if (port === null) {
-        throw new Error("Printer serial port not open for reading");
+        reportError("Printer serial port not open for reading");
+        return;
     }
 
     port.write(code);
@@ -129,7 +139,8 @@ type CallBack = (msg: string) => void;
 function sendLine(line: string, resolve?: CallBack | undefined,
                   reject?: CallBack | undefined, externalResolve = false) {
     if (port === null) {
-        throw new Error("Printer serial port not open for writing");
+        reportError("Printer serial port not open for writing");
+        return;
     }
 
     // Remove comments
@@ -195,6 +206,8 @@ setInterval(async () => {
     } else {
         console.log("Invalid temp response: " + resp);
     }
+
+    watingForTemp = false;
 }, 1000);
 
 function handleSerialResponse(resp: string): void {

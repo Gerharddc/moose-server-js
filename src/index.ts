@@ -1,9 +1,11 @@
+import * as cors from "cors";
 import * as express from "express";
 import * as fileUpload from "express-fileupload";
 import { saveUploadedFile } from "./files";
 
 const app = express();
 app.use(fileUpload());
+app.use(cors());
 
 app.get("/test", (req, res) => {
   res.send("Test response!");
@@ -18,12 +20,20 @@ try {
 }
 
 app.post("/upload", (req, res) => {
+  console.log("upload request");
+
   if (!req.files) {
     return res.status(400).send("No files were uploaded.");
   }
 
   try {
-    req.files.forEach((file) => saveUploadedFile(file));
+    const gcodes = req.files.gcodes;
+
+    if (Array.isArray(gcodes)) {
+      gcodes.forEach((gcode) => saveUploadedFile(gcode));
+    } else {
+      saveUploadedFile(gcodes);
+    }
 
     res.send("Success");
   } catch (e) {
@@ -53,3 +63,4 @@ wss.on("connection", (ws) => {
     console.log("Connection closed");
   });
 });
+
