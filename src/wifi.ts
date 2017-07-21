@@ -1,6 +1,6 @@
 import * as ConnMan from "connman-node-api";
 import * as WebSocket from "uws";
-import { Notify } from "./notify";
+import { Notify, NotifyError } from "./notify";
 
 class SSID {
     public Name: string;
@@ -106,11 +106,13 @@ export function connectSSID(ssid: SSID, password: string) {
 
     wifi.findAccessPoint(ssid.Name, (err, service) => {
         if (!service) {
-            throw new Error("No such access point");
+            NotifyError("No such access point");
+            return;
         }
 
         if (!service.connect) {
-            throw new Error("Service is fucked");
+            NotifyError("Service is fucked");
+            return;
         }
 
         const notifyConnected = () => {
