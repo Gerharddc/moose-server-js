@@ -11,7 +11,13 @@ const ssids: SSID[] = [];
 
 let connected = false;
 let connectedSSID: SSID | null = null;
+let connectingSSID: SSID | null = null;
 let connectingPassword = "";
+let connectedService: ConnMan.Service | null = null;
+
+let Hosting = false;
+let HostingSSID = "MooseNet";
+let HostingPWD = "MoosePass";
 
 const connman = new ConnMan(true);
 let wifi: ConnMan.Technology | null = null;
@@ -30,6 +36,73 @@ connman.init((err) => {
         // Ensure the wifi is on
         wifi.setProperty("Powered", true, () => {
             console.log("Enabled wifi");
+        });
+
+        wifi.on("PropertyChanged", (name, value) => {
+            console.log("Tech prop change: " + name + "=" + value);
+
+            if (name === "Connected" && value === false) {
+                notifyDisConnected();
+            }
+        });
+
+        wifi.getProperties((error, props) => {
+            if (error) {
+                console.log("Get wifi props error: " + error);
+                return;
+            }
+
+            if (props.hasOwnProperty("Connected")) {
+                connected = props.Connected;
+            }
+
+            if (props.hasOwnProperty("Tethering")) {
+                Hosting = props.Tethering;
+
+                if (props.hasOwnProperty("TetheringIdentifier")) {
+                    HostingSSID = props.TetheringIdentifier;
+                }
+                if (props.hasOwnProperty("TetheringPassphrase")) {
+                    HostingPWD = props.TetheringPassphrase;
+                }
+            }
+
+            if (!wifi) {
+                return;
+            }
+
+            if (connected) {
+                // Find the connected service
+                wifi.getServices((err2, services) => {
+                    for (const serviceName in services) {
+                        if (services[serviceName].State === "ready") {
+                            connman.getService(serviceName, (err3, ser) => {
+                                if (err3) {
+                                    console.log("Getservice-error: " + err3);
+                                    NotifyError("Connection error: " + err3);
+                                } else {
+                                    connectedService = ser;
+                                    const ap = services[serviceName];
+                                    connectingSSID = {
+                                        Name: ap.Name,
+                                        Secured: ap.Security !== "none",
+                                    };
+                                }
+                            });
+                            notifyConnected();
+                            return;
+                        }
+                    }
+
+                    NotifyError("No such access point");
+                });
+            } else if (!Hosting) {
+                // Scan for availale networks and start hosting if we could
+                // not autoconnect
+                scanWifi(() => {
+                    startHosting(HostingSSID, HostingPWD, null);
+                });
+            }
         });
     }
 
@@ -54,7 +127,6 @@ connman.init((err) => {
             if ("Passphrase" in dict) {
                 callback({ Passphrase: connectingPassword });
             }
-
         });
 
         connman.Agent.on("Cancel", () => {
@@ -69,7 +141,7 @@ export function getSSIDS() {
     return ssids;
 }
 
-export function scanWifi() {
+export function scanWifi(callback: (() => void) | null = null) {
     if (!wifi) {
         throw new Error("Wifi technology not available");
     }
@@ -89,8 +161,55 @@ export function scanWifi() {
             }
 
             Notify("Wifi", 0, "SSIDS", null);
+
+            if (callback) {
+                callback();
+            }
         });
     });
+}
+
+function notifyDisConnected() {
+    connected = false;
+    connectedSSID = null;
+    Notify("Wifi", 0, "ConnectedSSID", null);
+    Notify("Wifi", 0, "Connected", null);
+}
+
+function notifyConnected() {
+    if (connectedService) {
+        connectedService.removeListener("PropertyChanged", handleServiceChange);
+    }
+
+    connected = true;
+    connectedSSID = connectingSSID;
+    Notify("Wifi", 0, "ConnectedSSID", null);
+    Notify("Wifi", 0, "Connected", null);
+}
+
+function handleServiceChange(name: any, value: any) {
+    console.log("Wifi service: " + name + " = " + value);
+    if (name === "State") {
+        switch (value) {
+            case "failure":
+                console.log("Connection failed");
+                NotifyError("Connection failed");
+                notifyDisConnected();
+                break;
+            case "association":
+                console.log("Associating ...");
+                break;
+            case "configuration":
+                console.log("Configuring ...");
+                break;
+            case "online":
+                console.log("Online...");
+            case "ready":
+                console.log("Connected");
+                notifyConnected();
+                break;
+        }
+    }
 }
 
 export function connectSSID(ssid: SSID, password: string) {
@@ -104,64 +223,47 @@ export function connectSSID(ssid: SSID, password: string) {
 
     connectingPassword = password;
 
-    wifi.findAccessPoint(ssid.Name, (err, service) => {
+    const connectToService = (service: ConnMan.Service) => {
         if (!service) {
             NotifyError("No such access point");
             return;
         }
 
         if (!service.connect) {
-            NotifyError("Service is fucked");
+            NotifyError("Service is not connectable");
             return;
         }
 
-        const notifyConnected = () => {
-            connected = true;
-            connectedSSID = ssid;
-            Notify("Wifi", 0, "ConnectedSSID", null);
-            Notify("Wifi", 0, "Connected", null);
-        };
+        connectedService = service;
+        connectingSSID = ssid;
 
-        const notifyDisConnected = () => {
-            connected = false;
-            connectedSSID = null;
-            Notify("Wifi", 0, "ConnectedSSID", null);
-            Notify("Wifi", 0, "Connected", null);
-        };
+        service.on("PropertyChanged", handleServiceChange);
 
         service.connect((error, agent) => {
             if (error) {
                 console.log("Wifi connect error: " + error);
+                NotifyError("Connection error: " + error);
                 notifyDisConnected();
-            } else {
-                connected = true;
-                notifyConnected();
             }
         });
+    };
 
-        service.on("PropertyChanged", (name, value) => {
-            console.log(name + " = " + value);
-            if (name === "State") {
-                switch (value) {
-                    case "failure":
-                        console.log("Connection failed");
-                        notifyDisConnected();
-                        break;
-                    case "association":
-                        console.log("Associating ...");
-                        break;
-                    case "configuration":
-                        console.log("Configuring ...");
-                        break;
-                    case "online":
-                        console.log("Online...");
-                    case "ready":
-                        console.log("Connected");
-                        notifyConnected();
-                        break;
-                }
+    wifi.getServices((err, services) => {
+        for (const serviceName in services) {
+            if (services[serviceName].Name === ssid.Name) {
+                connman.getService(serviceName, (err2, ser) => {
+                    if (err2) {
+                        console.log("Getservice-error: " + err2);
+                        NotifyError("Connection error: " + err2);
+                    } else {
+                        connectToService(ser);
+                    }
+                });
+                return;
             }
-        });
+        }
+
+        NotifyError("No such access point");
     });
 }
 
@@ -174,12 +276,12 @@ export function getConnected() {
 }
 
 export function disconnect() {
-    // TODO
+    if (connectedService) {
+        connectedService.disconnect(() => {
+            console.log("Requested disconnect");
+        });
+    }
 }
-
-let Hosting = false;
-let HostingSSID = "MooseNet";
-let HostingPWD = "MoosePass";
 
 export function getHosting() {
     return Hosting;
@@ -193,24 +295,38 @@ export function getHostingPWD() {
     return HostingPWD;
 }
 
-export function startHosting(ssid: string, pwd: string, client: WebSocket) {
+export function startHosting(ssid: string, pwd: string, client: WebSocket | null) {
+    let changed = false;
+
     if (ssid !== HostingSSID) {
         HostingSSID = ssid;
         Notify("Wifi", 0, "HostingSSID", client);
+    } else {
+        changed = true;
     }
 
     if (pwd !== HostingPWD) {
         HostingPWD = pwd;
         Notify("Wifi", 0, "HostingPWD", client);
+    } else {
+        changed = true;
+    }
+
+    if (!wifi) {
+        throw new Error("Wifi technology not available");
     }
 
     if (!Hosting) {
         Hosting = true;
         Notify("Wifi", 0, "Hosting", client);
-    }
-
-    if (!wifi) {
-        throw new Error("Wifi technology not available");
+    } else if (changed) {
+        wifi.disableTethering((err, res) => {
+            if (!err) {
+                console.log("Tethering disabled");
+            } else {
+                console.log(err);
+            }
+        });
     }
 
     wifi.enableTethering(HostingSSID, HostingPWD, (err) => {
