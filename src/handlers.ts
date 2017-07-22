@@ -191,9 +191,9 @@ const handlerFunctions: any = {
         }
     },
 
-    GetFiles: (data: any, client: WebSocket) => {
+    GetFiles: async (data: any, client: WebSocket) => {
         try {
-            return Files.listFiles();
+            return await Files.listFiles();
         } catch (e) {
             throw new Error("GetFiles-Error: " + e.message);
         }
@@ -274,7 +274,7 @@ const handlerFunctions: any = {
 
 import * as WebSocket from "uws";
 
-export function HandleRequest(message: string, client: WebSocket): string {
+export async function HandleRequest(message: string, client: WebSocket): Promise<string> {
     let id;
     try {
         const req = JSON.parse(message);
@@ -291,7 +291,7 @@ export function HandleRequest(message: string, client: WebSocket): string {
         const func = handlerFunctions[req.request];
         let resp = null;
         if (func) {
-            resp = func(req.data, client);
+            resp = await func(req.data, client);
             if (resp === undefined) {
                 resp = null;
             }

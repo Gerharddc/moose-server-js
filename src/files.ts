@@ -1,36 +1,40 @@
-import * as fs from "fs";
+import * as fs from "async-file";
+import * as path from "path";
 import { Notify } from "./notify";
 
 export const rootPath = "/home/printer/";
 
-export function listFiles(): string[] {
+export async function listFiles(): Promise<string[]> {
     const files: string[] = [];
-    fs.readdirSync(rootPath).forEach((file) => {
+    (await fs.readdir(rootPath)).forEach((file) => {
         files.push(file);
     });
 
     return files;
 }
 
-export function saveUploadedFile(file: Express.File) {
-    file.mv(rootPath + file.name, (err) => {
-        if (err) {
-            throw new Error(err);
-        }
+export async function nameFile(file: Express.Multer.File) {
+    const oldPath = rootPath + file.filename;
+    let newPath = rootPath + file.originalname;
 
-        Notify("Printer", 0, "Files", null);
-    });
+    let n = 1;
+    while (await fs.exists(newPath)) {
+        n++;
+        const parsed = path.parse(file.originalname);
+        newPath = `${rootPath}${parsed.name}(${n})${parsed.ext}`;
+    }
+
+    await fs.rename(oldPath, newPath);
 }
 
-export function deleteFile(path: string) {
+export async function deleteFile(file: string) {
     // TODO: secure
-    fs.unlink(rootPath + path, (err) => {
-        if (err) {
-            console.log("Error deleting file: " + err);
-        } else {
-            console.log("Deleted file: " + path);
-        }
+    try {
+        await fs.unlink(rootPath + file);
 
+        console.log("Deleted file: " + file);
         Notify("Printer", 0, "Files", null);
-    });
+    } catch (err) {
+        console.log("Error deleting file: " + err);
+    }
 }

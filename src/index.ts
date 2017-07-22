@@ -1,10 +1,12 @@
 import * as cors from "cors";
 import * as express from "express";
-import * as fileUpload from "express-fileupload";
-import { saveUploadedFile } from "./files";
+import * as multer from "multer";
+import { nameFile } from "./files";
+import { Notify } from "./notify";
+
+const upload = multer({dest: "/home/printer/"});
 
 const app = express();
-app.use(fileUpload());
 app.use(cors());
 
 app.get("/test", (req, res) => {
@@ -19,25 +21,19 @@ try {
   console.log("Express-listen-error: e");
 }
 
-app.post("/upload", (req, res) => {
-  console.log("upload request");
+app.post("/upload", upload.single("gcode"), async (req, res, next) => {
+  console.log("Upload: " + req.file.filename);
+  await nameFile(req.file);
+  Notify("Printer", 0, "Files", null);
+});
 
-  if (!req.files) {
-    return res.status(400).send("No files were uploaded.");
-  }
-
-  try {
-    const gcodes = req.files.gcodes;
-
-    if (Array.isArray(gcodes)) {
-      gcodes.forEach((gcode) => saveUploadedFile(gcode));
-    } else {
-      saveUploadedFile(gcodes);
+app.post("/uploads", upload.array("gcodes"), async (req, res, next) => {
+  if (req.files instanceof Array) {
+    for (const file of req.files) {
+      console.log("Upload: " + file.filename);
+      await nameFile(file);
+      Notify("Printer", 0, "Files", null);
     }
-
-    res.send("Success");
-  } catch (e) {
-    return res.status(500).send(e.message);
   }
 });
 
@@ -52,10 +48,10 @@ wss.on("connection", (ws) => {
   AddClient(ws);
   console.log("New connection");
 
-  ws.on("message", (message) => {
+  ws.on("message", async (message) => {
     console.log("message: " + message);
 
-    ws.send(HandleRequest(message, ws));
+    ws.send(await HandleRequest(message, ws));
   });
 
   ws.on("close", (code, reason) => {
@@ -63,4 +59,3 @@ wss.on("connection", (ws) => {
     console.log("Connection closed");
   });
 });
-
