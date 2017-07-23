@@ -4,7 +4,7 @@ import * as Wifi from "./wifi";
 
 type HandlerFunction = (data: any, client: WebSocket) => any;
 
-const handlerFunctions: any = {
+const handlerFunctions: {[index: string]: HandlerFunction} = {
     GetTargetTemp: (data: any, client: WebSocket) => {
         if (typeof data.id !== "number") {
             throw new Error("HandleGetTargetTemp-Error: no id");

@@ -2,14 +2,9 @@ import * as child_process from "child_process";
 import { NotifyError } from "./notify";
 import * as Printer from "./printer";
 
-let roomForLines = false;
-
 const workerProcess = child_process.fork(__dirname + "/serialWorker.js");
 workerProcess.on("message", (msg) => {
     switch (msg.type) {
-        case "roomForLines":
-            roomForLines = msg.roomForLines;
-            break;
         case "callResolve":
             msg.resolve(msg.resp);
             break;
@@ -20,6 +15,8 @@ workerProcess.on("message", (msg) => {
             Printer.tempUpdateEmitter.emitBedTemp(msg.bedTemp);
             Printer.tempUpdateEmitter.emitExtTemp(msg.extTemp);
             break;
+        case "timeLeft":
+            Printer.updateTimeLeft(msg.timeLeft);
         case "error":
             NotifyError(msg.error);
             break;
@@ -49,27 +46,21 @@ export function resetLineNum(): void {
 
 // Synchronously sends line as soon as there is room
 export function sendLine(line: string) {
-    if (roomForLines) {
+    return new Promise((resolve, reject) => {
         workerProcess.send({
             action: "sendLine",
             line,
+            reject,
+            resolve,
         });
-    } else {
-        return new Promise((resolve, reject) => {
-            workerProcess.send({
-                action: "sendLine",
-                line,
-                reject,
-                resolve,
-            });
-        });
-    }
+    });
 }
 
-export function sendFile(filePath: string) {
+export function sendFile(filePath: string, fileTime: number) {
     workerProcess.send({
         action: "sendFile",
         filePath,
+        fileTime,
     });
 }
 

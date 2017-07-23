@@ -1,11 +1,13 @@
 import * as cors from "cors";
 import * as express from "express";
 import * as multer from "multer";
+import * as storage from "node-persist";
 import { processFile, rawPath } from "./files";
 import { Notify } from "./notify";
 
-const upload = multer({dest: rawPath});
+storage.initSync();
 
+const upload = multer({dest: rawPath});
 const app = express();
 app.use(cors());
 

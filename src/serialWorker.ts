@@ -1,7 +1,7 @@
 import * as EventEmitter from "events";
 import * as LineByLineReader from "line-by-line";
 import * as SerialPort from "serialport";
-import { rootPath } from "./files";
+import { readyPath } from "./files";
 
 class PrintFlow extends EventEmitter {
     private paused: boolean = false;
@@ -44,16 +44,13 @@ process.on("message", (msg) => {
             sendCode(msg.code);
             break;
         case "sendLine":
-            sendLine(msg.line, msg.promise, msg.reject, true);
+            sendLine(msg.line, msg.resolve, msg.reject, true);
             break;
         case "resetLineNum":
             resetLineNum();
             break;
-        case "checkRoomForLines":
-            checkRoomForLines();
-            break;
         case "sendFile":
-            sendFile(msg.filePath);
+            sendFile(msg.filePath, msg.fileTime);
             break;
         case "pauseFile":
             printFlow.pasuePrint();
@@ -124,27 +121,39 @@ function incrementLineNum() {
     }
 }
 
-function checkRoomForLines() {
-    if (process.send) {
-        process.send({
-            roomForLines: sentLines < maxSentLines,
-            type: "roomForLines",
-        });
+type CallBack = (msg?: string) => void;
+
+const roomResolves: CallBack[] = [];
+
+function waitForLinesRoom() {
+    return new Promise((resolve, reject) => {
+        if (sentLines < maxSentLines) {
+            resolve();
+        } else {
+            roomResolves.push(resolve);
+        }
+    });
+}
+
+function resolveLinesRoom() {
+    // TODO: make sure this works
+    while (sentLines < maxSentLines && roomResolves.length > 0) {
+        const resolve = roomResolves.shift();
+        if (resolve) {
+            resolve();
+        }
     }
 }
 
-type CallBack = (msg: string) => void;
-
 // Synchronously sends line
+// it is assumed they don't have comments
 function sendLine(line: string, resolve?: CallBack | undefined,
-                  reject?: CallBack | undefined, externalResolve = false) {
+    reject?: CallBack | undefined, externalResolve = false) {
     if (port === null) {
         reportError("Printer serial port not open for writing");
         return;
     }
 
-    // Remove comments
-    line = line.split(";")[0];
     line = "N" + curLineNum + " " + line + " *";
 
     // Add checksum
@@ -168,7 +177,6 @@ function sendLine(line: string, resolve?: CallBack | undefined,
 
     sentLines++;
     incrementLineNum();
-    checkRoomForLines();
 }
 
 async function sendLineAsync(line: string) {
@@ -237,25 +245,51 @@ function handleSerialResponse(resp: string): void {
                 resolve(resp);
             }
         }
+
+        resolveLinesRoom();
     }
 }
 
-function sendFile(filePath: string) {
-    const lineReader = new LineByLineReader(rootPath + filePath);
+function reportTimeLeft(timeLeft: number) {
+    if (process.send) {
+        process.send({
+            timeLeft,
+            type: "timeLeft",
+        });
+    }
+}
 
-    lineReader.on("line", (line) => {
+function sendFile(fileName: string, fileTime: number) {
+    const lineReader = new LineByLineReader(readyPath + fileName);
+
+    lineReader.on("line", async (line) => {
         if (printFlow.Paused || printFlow.Stopped) {
             return;
         }
 
         lineReader.pause();
 
-        const res = sendLineAsync(line);
-        if (res instanceof Promise) {
-            res.then((m) => lineReader.resume());
-        } else {
-            lineReader.resume();
+        // Decode the line back to a gcode string
+        const json = JSON.parse(line);
+        if (json.blocks) {
+            const blocks: Map<string, string> = new Map(json.blocks);
+
+            let gcode = "";
+            blocks.forEach((value, key) => {
+                gcode += key + value;
+            });
+
+            await waitForLinesRoom();
+            sendLineAsync(gcode);
         }
+
+        if (json.time) {
+            fileTime -= json.time;
+
+            reportTimeLeft(fileTime);
+        }
+
+        lineReader.resume();
     });
 
     lineReader.on("error", (err) => {
@@ -284,5 +318,3 @@ function sendFile(filePath: string) {
         lineReader.close();
     });
 }
-
-checkRoomForLines();

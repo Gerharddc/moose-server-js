@@ -1,20 +1,31 @@
 import * as fs from "async-file";
 import * as child_process from "child_process";
+import * as storage from "node-persist";
 import { Notify, NotifyError } from "./notify";
 
 export const rootPath = "/home/printer/";
 export const readyPath = rootPath + "ready/";
 export const rawPath = rootPath + "raw/";
-export const metadataPath = rootPath + "metadata/";
 
 const workerProcess = child_process.fork(__dirname + "/fileWorker.js");
-workerProcess.on("message", (msg) => {
+workerProcess.on("message", async (msg) => {
     switch (msg.type) {
+        case "setFileTime":
+            await setFileTime(msg.file, msg.time);
+            break;
         case "error":
             NotifyError(msg.error);
             break;
     }
 });
+
+async function setFileTime(file: string, time: number) {
+    await storage.setItem("FileTime-" + file, time);
+}
+
+export async function getFileTime(file: string): Promise<number> {
+    return await storage.getItem("FileTime-" + file);
+}
 
 export async function listFiles(): Promise<string[]> {
     const files: string[] = [];
@@ -25,18 +36,11 @@ export async function listFiles(): Promise<string[]> {
     return files;
 }
 
-export async function processFile(file: Express.Multer.File) {
-    const oldPath = rootPath + file.filename;
-    let newPath = rootPath + file.originalname;
-
-    let n = 1;
-    while (await fs.exists(newPath)) {
-        n++;
-        const parsed = path.parse(file.originalname);
-        newPath = `${rootPath}${parsed.name}(${n})${parsed.ext}`;
-    }
-
-    await fs.rename(oldPath, newPath);
+export function processFile(file: Express.Multer.File) {
+    workerProcess.send({
+        action: "processFile",
+        file,
+    });
 }
 
 export async function deleteFile(file: string) {

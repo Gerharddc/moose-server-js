@@ -12,6 +12,7 @@ class TempUpdateEmitter extends EventEmitter {
 
 export const tempUpdateEmitter = new TempUpdateEmitter();
 
+import * as Files from "./files";
 import Heater from "./heater";
 import * as Notify from "./notify";
 import * as Serial from "./serial";
@@ -60,10 +61,27 @@ export function moveAxis(distance: number, speed: number, forward: boolean, axis
     Serial.sendLine(line);
 }
 
+let fileTime = 0;
+let timeLeft = 0;
 let printing = false;
 let paused = false;
 let progress = 50;
 let eta = "10m 30s";
+
+export function updateTimeLeft(time: number) {
+    timeLeft = time;
+    progress = Math.round((fileTime - timeLeft) / fileTime * 10000) / 100;
+
+    const hours = Math.floor(time / 3600000);
+    time -= hours * 3600000;
+
+    const minutes = Math.floor(time / 60000);
+    time -= minutes * 60000;
+
+    const secs = Math.round(time / 1000);
+
+    eta = `${hours}h ${minutes} ${secs}`;
+}
 
 export function getPrinting() {
     return printing;
@@ -91,8 +109,10 @@ function setPaused(val: boolean) {
     Notify.Notify("Printer", 0, "Paused", null);
 }
 
-export function printFile(fileName: string) {
-    Serial.sendFile(fileName);
+export async function printFile(fileName: string) {
+    fileTime = await Files.getFileTime(fileName);
+    updateTimeLeft(fileTime);
+    Serial.sendFile(fileName, fileTime);
     setPrinting(true);
 }
 
