@@ -1,10 +1,10 @@
 import * as cors from "cors";
 import * as express from "express";
 import * as multer from "multer";
-import { nameFile } from "./files";
+import { processFile, rawPath } from "./files";
 import { Notify } from "./notify";
 
-const upload = multer({dest: "/home/printer/"});
+const upload = multer({dest: rawPath});
 
 const app = express();
 app.use(cors());
@@ -23,7 +23,7 @@ try {
 
 app.post("/upload", upload.single("gcode"), async (req, res, next) => {
   console.log("Upload: " + req.file.filename);
-  await nameFile(req.file);
+  await processFile(req.file);
   Notify("Printer", 0, "Files", null);
 });
 
@@ -31,7 +31,7 @@ app.post("/uploads", upload.array("gcodes"), async (req, res, next) => {
   if (req.files instanceof Array) {
     for (const file of req.files) {
       console.log("Upload: " + file.filename);
-      await nameFile(file);
+      await processFile(file);
       Notify("Printer", 0, "Files", null);
     }
   }

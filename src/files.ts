@@ -1,8 +1,20 @@
 import * as fs from "async-file";
-import * as path from "path";
-import { Notify } from "./notify";
+import * as child_process from "child_process";
+import { Notify, NotifyError } from "./notify";
 
 export const rootPath = "/home/printer/";
+export const readyPath = rootPath + "ready/";
+export const rawPath = rootPath + "raw/";
+export const metadataPath = rootPath + "metadata/";
+
+const workerProcess = child_process.fork(__dirname + "/fileWorker.js");
+workerProcess.on("message", (msg) => {
+    switch (msg.type) {
+        case "error":
+            NotifyError(msg.error);
+            break;
+    }
+});
 
 export async function listFiles(): Promise<string[]> {
     const files: string[] = [];
@@ -13,7 +25,7 @@ export async function listFiles(): Promise<string[]> {
     return files;
 }
 
-export async function nameFile(file: Express.Multer.File) {
+export async function processFile(file: Express.Multer.File) {
     const oldPath = rootPath + file.filename;
     let newPath = rootPath + file.originalname;
 
