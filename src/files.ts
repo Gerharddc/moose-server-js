@@ -20,6 +20,9 @@ export function Init() {
             case "error":
                 NotifyError(msg.error);
                 break;
+            case "notifyFiles":
+                Notify("Printer", 0, "Files", null);
+                break;
         }
     });
 
@@ -45,17 +48,10 @@ export async function listFiles(): Promise<string[]> {
     return files;
 }
 
-export function processFile(file: Express.Multer.File) {
-    /*workerProcess.send({
-        action: "processFile",
-        file,
-    });*/
-}
-
 export async function deleteFile(file: string) {
     // TODO: secure
     try {
-        await fs.unlink(rootPath + file);
+        await fs.unlink(readyPath + file);
 
         console.log("Deleted file: " + file);
         Notify("Printer", 0, "Files", null);
@@ -65,5 +61,5 @@ export async function deleteFile(file: string) {
 }
 
 export async function getETA(file: string) {
-    return millisToETA(await getFileTime(file));
+    return millisToETA(await getFileTime(file) || 0);
 }

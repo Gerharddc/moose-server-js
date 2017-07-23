@@ -2,33 +2,33 @@ import * as child_process from "child_process";
 import { NotifyError } from "./notify";
 import * as Printer from "./printer";
 
-const workerProcess = child_process.fork(__dirname + "/serialWorker.js");
-workerProcess.on("message", (msg) => {
-    switch (msg.type) {
-        case "callResolve":
-            msg.resolve(msg.resp);
-            break;
-        case "notifyPrintDone":
-            notifyPrintDone();
-            break;
-        case "emitTemps":
-            Printer.tempUpdateEmitter.emitBedTemp(msg.bedTemp);
-            Printer.tempUpdateEmitter.emitExtTemp(msg.extTemp);
-            break;
-        case "timeLeft":
-            Printer.updateTimeLeft(msg.timeLeft);
-        case "error":
-            NotifyError(msg.error);
-            break;
-    }
-});
+let workerProcess: child_process.ChildProcess;
 
-process.on("exit", () => {
-    workerProcess.kill();
-});
+export function Init() {
+    workerProcess = child_process.fork(__dirname + "/serialWorker.js");
+    workerProcess.on("message", (msg) => {
+        switch (msg.type) {
+            case "callResolve":
+                msg.resolve(msg.resp);
+                break;
+            case "notifyPrintDone":
+                notifyPrintDone();
+                break;
+            case "emitTemps":
+                Printer.tempUpdateEmitter.emitBedTemp(msg.bedTemp);
+                Printer.tempUpdateEmitter.emitExtTemp(msg.extTemp);
+                break;
+            case "timeLeft":
+                Printer.updateTimeLeft(msg.timeLeft);
+            case "error":
+                NotifyError(msg.error);
+                break;
+        }
+    });
 
-if (!workerProcess) {
-    console.log("O fok forking error!");
+    process.on("exit", () => {
+        workerProcess.kill();
+    });
 }
 
 function notifyPrintDone() {

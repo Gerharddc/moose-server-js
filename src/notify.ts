@@ -1,4 +1,4 @@
-import * as WebSocket from "uws";
+import * as WebSocket from "ws";
 
 let clients: WebSocket[] = [];
 

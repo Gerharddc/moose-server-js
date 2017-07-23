@@ -66,7 +66,7 @@ process.on("message", (msg) => {
 
 let port: SerialPort | null = null;
 try {
-    /*port = new SerialPort("/dev/ttyS0", {
+    port = new SerialPort("/dev/ttyS0", {
         baudRate: 57600,
         parser: SerialPort.parsers.readline("\r\n"),
     });
@@ -79,7 +79,7 @@ try {
 
     port.on("data", (data) => {
         handleSerialResponse(data);
-    });*/
+    });
 } catch (e) {
     console.log("SerialPort-error: " + e.message);
 }
@@ -318,3 +318,5 @@ function sendFile(fileName: string, fileTime: number) {
         lineReader.close();
     });
 }
+
+console.log("Serial worker");

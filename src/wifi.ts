@@ -1,5 +1,5 @@
 import * as ConnMan from "connman-node-api";
-import * as WebSocket from "uws";
+import * as WebSocket from "ws";
 import { Notify, NotifyError } from "./notify";
 
 class SSID {

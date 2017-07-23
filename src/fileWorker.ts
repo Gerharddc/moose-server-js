@@ -20,6 +20,14 @@ function reportError(error: string) {
     }
 }
 
+function notifyFiles() {
+    if (process.send) {
+        process.send({
+            type: "notifyFiles",
+        });
+    }
+}
+
 function setFileTime(file: string, time: number) {
     if (process.send) {
         process.send({
@@ -32,6 +40,8 @@ function setFileTime(file: string, time: number) {
 
 function procLines(file: string, output: fs.WriteStream): Promise<number> {
     return new Promise((resolve, reject) => {
+        console.log("Processing: " + file);
+
         const lineReader = new LineByLineReader(file);
 
         const LastPoses: { [index: string]: number } = {
@@ -48,68 +58,62 @@ function procLines(file: string, output: fs.WriteStream): Promise<number> {
         let fileTime = 0;
         let goingRelative = false;
 
-        lineReader.on("line", async (line) => {
-            if (line instanceof String) {
-                // Remove comments
-                line = line.split(";")[0];
+        lineReader.on("line", (line) => {
+            // Remove comments
+            line = line.split(";")[0];
 
-                const parts = line.split(" ");
-                const blocks: Map<string, string> = new Map();
+            const parts = line.split(" ");
+            const blocks: Map<string, string> = new Map();
 
-                for (const part of parts) {
-                    const regex = /(.)(\d+\.?\d+)/;
-                    const extract = regex.exec(part);
+            for (const part of parts) {
+                blocks.set(part[0], part.slice(1));
+            }
 
-                    if (extract && extract[1] && extract[2]) {
-                        blocks.set(extract[1], extract[2]);
+            let time = 0;
+
+            if (blocks.has("G")) {
+                const g = Number.parseInt(blocks.get("G")!);
+
+                if (g === 0 || g === 1) {
+                    if (blocks.has("F")) {
+                        // Convert mm/min to mm/msec
+                        LastsFs[g] = Number.parseFloat(blocks.get("F")!) / 60000;
                     }
-                }
 
-                let time = 0;
+                    const feedrate = LastsFs[g];
 
-                if (blocks.has("G")) {
-                    const g = Number.parseInt(blocks.get("G")!);
+                    let dist = 0;
+                    for (const key in LastPoses) {
+                        if (blocks.has(key)) {
+                            const now = Number.parseFloat(blocks.get(key)!);
 
-                    if (g === 0 || g === 1) {
-                        if (blocks.has("F")) {
-                            // Convert mm/min to mm/msec
-                            LastsFs[g] = Number.parseFloat(blocks.get("F")!) * 60000;
-                        }
-
-                        const feedrate = LastsFs[g];
-
-                        let dist = 0;
-                        for (const key in LastPoses) {
-                            if (blocks.has(key)) {
-                                const now = Number.parseFloat(blocks.get(key)!);
-
-                                if (goingRelative) {
-                                    dist += Math.pow(now, 2);
-                                    LastPoses[key] += now;
-                                } else {
-                                    dist += Math.pow(now - LastPoses[key], 2);
-                                    LastPoses[key] = now;
-                                }
+                            if (goingRelative) {
+                                dist += Math.pow(now, 2);
+                                LastPoses[key] += now;
+                            } else {
+                                dist += Math.pow(now - LastPoses[key], 2);
+                                LastPoses[key] = now;
                             }
                         }
-                        dist = Math.sqrt(dist);
-
-                        // Calculate the time in milliseconds
-                        time = (dist / LastsFs[g]);
-                        fileTime += time;
-                    } else if (g === 90) {
-                        goingRelative = false;
-                    } else if (g === 91) {
-                        goingRelative = true;
                     }
-                }
+                    dist = Math.sqrt(dist);
 
-                // We need to encode the map as an array
-                output.write(JSON.stringify({ blocks: [...blocks], time }) + "\n");
+                    // Calculate the time in milliseconds
+                    time = (dist / LastsFs[g]) * 1.1; // add 10%
+                    fileTime += time;
+                } else if (g === 90) {
+                    goingRelative = false;
+                } else if (g === 91) {
+                    goingRelative = true;
+                }
             }
+
+            // We need to encode the map as an array
+            output.write(JSON.stringify({ blocks: [...blocks], time }) + "\n");
         });
 
         lineReader.on("error", (err) => {
+            console.log("Linereader: " + err);
             reject(err);
         });
 
@@ -122,15 +126,15 @@ function procLines(file: string, output: fs.WriteStream): Promise<number> {
 async function processFile(file: Express.Multer.File) {
     // Determine the final name
     const oldPath = Files.rawPath + file.filename;
-    let newPath = Files.readyPath + file.originalname;
     const parsed = path.parse(file.originalname);
+    let newPath = Files.readyPath + parsed.name;
 
     if (parsed.ext !== ".gcode") {
         reportError(file.originalname + " is not GCode");
         return;
     }
 
-    /*let n = 1;
+    let n = 1;
     while (await fs.exists(newPath)) {
         n++;
         newPath = `${Files.readyPath}${parsed.name}(${n})`;
@@ -138,58 +142,45 @@ async function processFile(file: Express.Multer.File) {
 
     const writer = fs.createWriteStream(newPath, { flags: "w" });
     const time = await procLines(oldPath, writer);
-    setFileTime(parsed.name, time);*/
+    setFileTime((n === 1) ? (parsed.name) : `${parsed.name}(${n})`, time);
 
-    // await fs.rename(oldPath, newPath);
     await fs.unlink(oldPath);
+    console.log("Filetime: " + time);
 }
-
-/*console.log("Starting websocket file server");
-import { Server as WebSocketServer} from "ws";
-const wss = new WebSocketServer({ port: 3000 });
-console.log("Started websocket file server");
-
-wss.on("connection", (ws) => {
-  console.log("New file connection");
-
-  let name: string | null = null;
-
-  ws.on("message", async (message) => {
-    if (name === null) {
-        name = String(message);
-        console.log("name: " + name);
-    } else if (message === "DONE") {
-        console.log("done");
-    }
-
-    // ws.send(await HandleRequest(message, ws));
-    ws.send("ok");
-  });
-
-  ws.on("close", (code, reason) => {
-    console.log("File connection closed");
-  });
-});*/
 
 import * as cors from "cors";
 import * as express from "express";
 import * as multer from "multer";
 
-const upload = multer({dest: "/home/printer/"});
+const upload = multer({ dest: Files.rawPath });
 
 const app = express();
 app.use(cors());
 
 try {
-  app.listen(3000, () => {
-    console.log("Example app listening!");
-  });
+    app.listen(3000, () => {
+        console.log("File server listening!");
+    });
 } catch (e) {
-  console.log("Express-listen-error: e");
+    console.log("Express-listen-error: e");
 }
 
 app.post("/upload", upload.single("gcode"), async (req, res, next) => {
-  console.log("Upload: " + req.file.filename);
-  //await nameFile(req.file);
-  //Notify("Printer", 0, "Files", null);
+    console.log("Upload: " + req.file.filename);
+    await processFile(req.file);
+    res.write("ok");
+    notifyFiles();
+});
+
+app.post("/uploads", upload.array("gcodes"), async (req, res, next) => {
+    if (req.files instanceof Array) {
+        for (const file of req.files) {
+            console.log("Upload: " + file.filename);
+            await processFile(file);
+        }
+
+        notifyFiles();
+    }
+
+    res.write("ok");
 });

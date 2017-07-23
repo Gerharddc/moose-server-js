@@ -77,7 +77,7 @@ export function millisToETA(time: number) {
 
     const secs = Math.round(time / 1000);
 
-    return `${hours}h ${minutes} ${secs}`;
+    return `${hours}h ${minutes}m ${secs}s`;
 }
 
 export function updateTimeLeft(time: number) {

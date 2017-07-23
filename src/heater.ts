@@ -1,4 +1,4 @@
-import * as WebSocket from "uws";
+import * as WebSocket from "ws";
 import { Notify } from "./notify";
 import * as Printer from "./printer";
 import * as Serial from "./serial";

@@ -9,7 +9,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/ws": "^3.0.2",
     "async-file": "^2.0.2",
     "connman-node-api": "^0.4.1",
     "cors": "^2.8.4",
@@ -28,6 +27,7 @@
     "@types/multer": "^1.3.2",
     "@types/node-persist": "^0.0.32",
     "@types/serialport": "^4.0.9",
-    "@types/uws": "^0.13.0"
+    "@types/uws": "^0.13.0",
+    "@types/ws": "^3.0.2"
   }
 }
