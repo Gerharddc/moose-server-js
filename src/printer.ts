@@ -68,10 +68,7 @@ let paused = false;
 let progress = 50;
 let eta = "10m 30s";
 
-export function updateTimeLeft(time: number) {
-    timeLeft = time;
-    progress = Math.round((fileTime - timeLeft) / fileTime * 10000) / 100;
-
+export function millisToETA(time: number) {
     const hours = Math.floor(time / 3600000);
     time -= hours * 3600000;
 
@@ -80,7 +77,14 @@ export function updateTimeLeft(time: number) {
 
     const secs = Math.round(time / 1000);
 
-    eta = `${hours}h ${minutes} ${secs}`;
+    return `${hours}h ${minutes} ${secs}`;
+}
+
+export function updateTimeLeft(time: number) {
+    timeLeft = time;
+    progress = Math.round((fileTime - timeLeft) / fileTime * 10000) / 100;
+
+    eta = millisToETA(time);
 }
 
 export function getPrinting() {

@@ -66,7 +66,7 @@ process.on("message", (msg) => {
 
 let port: SerialPort | null = null;
 try {
-    port = new SerialPort("/dev/ttyS0", {
+    /*port = new SerialPort("/dev/ttyS0", {
         baudRate: 57600,
         parser: SerialPort.parsers.readline("\r\n"),
     });
@@ -79,7 +79,7 @@ try {
 
     port.on("data", (data) => {
         handleSerialResponse(data);
-    });
+    });*/
 } catch (e) {
     console.log("SerialPort-error: " + e.message);
 }
@@ -186,7 +186,7 @@ async function sendLineAsync(line: string) {
 }
 
 let watingForTemp = false;
-setInterval(async () => {
+/*setInterval(async () => {
     if (watingForTemp) {
         return;
     }
@@ -216,7 +216,7 @@ setInterval(async () => {
     }
 
     watingForTemp = false;
-}, 1000);
+}, 1000);*/
 
 function handleSerialResponse(resp: string): void {
     if (resp.includes("rs")) {

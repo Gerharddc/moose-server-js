@@ -130,7 +130,7 @@ async function processFile(file: Express.Multer.File) {
         return;
     }
 
-    let n = 1;
+    /*let n = 1;
     while (await fs.exists(newPath)) {
         n++;
         newPath = `${Files.readyPath}${parsed.name}(${n})`;
@@ -138,8 +138,58 @@ async function processFile(file: Express.Multer.File) {
 
     const writer = fs.createWriteStream(newPath, { flags: "w" });
     const time = await procLines(oldPath, writer);
-    setFileTime(parsed.name, time);
+    setFileTime(parsed.name, time);*/
 
     // await fs.rename(oldPath, newPath);
     await fs.unlink(oldPath);
 }
+
+/*console.log("Starting websocket file server");
+import { Server as WebSocketServer} from "ws";
+const wss = new WebSocketServer({ port: 3000 });
+console.log("Started websocket file server");
+
+wss.on("connection", (ws) => {
+  console.log("New file connection");
+
+  let name: string | null = null;
+
+  ws.on("message", async (message) => {
+    if (name === null) {
+        name = String(message);
+        console.log("name: " + name);
+    } else if (message === "DONE") {
+        console.log("done");
+    }
+
+    // ws.send(await HandleRequest(message, ws));
+    ws.send("ok");
+  });
+
+  ws.on("close", (code, reason) => {
+    console.log("File connection closed");
+  });
+});*/
+
+import * as cors from "cors";
+import * as express from "express";
+import * as multer from "multer";
+
+const upload = multer({dest: "/home/printer/"});
+
+const app = express();
+app.use(cors());
+
+try {
+  app.listen(3000, () => {
+    console.log("Example app listening!");
+  });
+} catch (e) {
+  console.log("Express-listen-error: e");
+}
+
+app.post("/upload", upload.single("gcode"), async (req, res, next) => {
+  console.log("Upload: " + req.file.filename);
+  //await nameFile(req.file);
+  //Notify("Printer", 0, "Files", null);
+});

@@ -1,15 +1,12 @@
-import * as cors from "cors";
 import * as express from "express";
-import * as multer from "multer";
 import * as storage from "node-persist";
 import { processFile, rawPath } from "./files";
 import { Notify } from "./notify";
 
+// Get the storage ready before we start the application
 storage.initSync();
 
-const upload = multer({dest: rawPath});
 const app = express();
-app.use(cors());
 
 app.get("/test", (req, res) => {
   res.send("Test response!");
@@ -23,7 +20,7 @@ try {
   console.log("Express-listen-error: e");
 }
 
-app.post("/upload", upload.single("gcode"), async (req, res, next) => {
+/*app.post("/upload", upload.single("gcode"), async (req, res, next) => {
   console.log("Upload: " + req.file.filename);
   await processFile(req.file);
   Notify("Printer", 0, "Files", null);
@@ -37,13 +34,14 @@ app.post("/uploads", upload.array("gcodes"), async (req, res, next) => {
       Notify("Printer", 0, "Files", null);
     }
   }
-});
+});*/
 
 import { HandleRequest } from "./handlers";
 import { AddClient, RemoveClient } from "./notify";
 
 import { Server as WebSocketServer} from "uws";
 const wss = new WebSocketServer({ port: 8080 });
+const wss2 = new WebSocketServer({ port: 8090 });
 console.log("Started websocket server");
 
 wss.on("connection", (ws) => {
@@ -61,3 +59,6 @@ wss.on("connection", (ws) => {
     console.log("Connection closed");
   });
 });
+
+import * as Files from "./files";
+Files.Init();

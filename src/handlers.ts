@@ -270,6 +270,14 @@ const handlerFunctions: {[index: string]: HandlerFunction} = {
             throw new Error("GetETA-Error: " + e.message);
         }
     },
+
+    GetFileETA: async (data: any, client: WebSocket) => {
+        try {
+            return await Files.getETA(data.file);
+        } catch (e) {
+            throw new Error("GetFileETA-Error: " + e.message);
+        }
+    },
 };
 
 import * as WebSocket from "uws";

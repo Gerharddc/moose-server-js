@@ -23,6 +23,10 @@ workerProcess.on("message", (msg) => {
     }
 });
 
+process.on("exit", () => {
+    workerProcess.kill();
+});
+
 if (!workerProcess) {
     console.log("O fok forking error!");
 }
