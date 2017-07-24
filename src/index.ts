@@ -7,12 +7,18 @@ storage.initSync();
 
 const app = express();
 
+app.use(express.static("/home/printer/react"));
+
+app.get("*", (req, res) => {
+  res.sendFile("/home/printer//index.html");
+});
+
 app.get("/test", (req, res) => {
   res.send("Test response!");
 });
 
 try {
-  app.listen(8000, () => {
+  app.listen(80, () => {
     console.log("Example app listening!");
   });
 } catch (e) {
