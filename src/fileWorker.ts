@@ -38,90 +38,18 @@ function setFileTime(file: string, time: number) {
     }
 }
 
-function procLines(file: string, output: fs.WriteStream): Promise<number> {
+// tslint:disable-next-line:no-var-requires
+const GCoder = require("../build/Release/gcoder");
+
+/*function procFile(inFile: string, outFile: string): Promise<number> {
     return new Promise((resolve, reject) => {
-        console.log("Processing: " + file);
-
-        const lineReader = new LineByLineReader(file);
-
-        const LastPoses: { [index: string]: number } = {
-            X: 0,
-            Y: 0,
-            Z: 0,
+        const log = (val: number) => {
+            console.log("Progress: " + val);
         };
 
-        const LastsFs = {
-            0: 0,
-            1: 0,
-        };
-
-        let fileTime = 0;
-        let goingRelative = false;
-
-        lineReader.on("line", (line) => {
-            // Remove comments
-            line = line.split(";")[0];
-
-            const parts = line.split(" ");
-            const blocks: Map<string, string> = new Map();
-
-            for (const part of parts) {
-                blocks.set(part[0], part.slice(1));
-            }
-
-            let time = 0;
-
-            if (blocks.has("G")) {
-                const g = Number.parseInt(blocks.get("G")!);
-
-                if (g === 0 || g === 1) {
-                    if (blocks.has("F")) {
-                        // Convert mm/min to mm/msec
-                        LastsFs[g] = Number.parseFloat(blocks.get("F")!) / 60000;
-                    }
-
-                    const feedrate = LastsFs[g];
-
-                    let dist = 0;
-                    for (const key in LastPoses) {
-                        if (blocks.has(key)) {
-                            const now = Number.parseFloat(blocks.get(key)!);
-
-                            if (goingRelative) {
-                                dist += Math.pow(now, 2);
-                                LastPoses[key] += now;
-                            } else {
-                                dist += Math.pow(now - LastPoses[key], 2);
-                                LastPoses[key] = now;
-                            }
-                        }
-                    }
-                    dist = Math.sqrt(dist);
-
-                    // Calculate the time in milliseconds
-                    time = (dist / LastsFs[g]) * 1.1; // add 10%
-                    fileTime += time;
-                } else if (g === 90) {
-                    goingRelative = false;
-                } else if (g === 91) {
-                    goingRelative = true;
-                }
-            }
-
-            // We need to encode the map as an array
-            output.write(JSON.stringify({ blocks: [...blocks], time }) + "\n");
-        });
-
-        lineReader.on("error", (err) => {
-            console.log("Linereader: " + err);
-            reject(err);
-        });
-
-        lineReader.on("end", () => {
-            resolve(fileTime);
-        });
+        GCoder.TimeFile(inFile, outFile, log, (time: number) => resolve(time));
     });
-}
+}*/
 
 async function processFile(file: Express.Multer.File) {
     // Determine the final name
@@ -140,8 +68,13 @@ async function processFile(file: Express.Multer.File) {
         newPath = `${Files.readyPath}${parsed.name}(${n})`;
     }
 
-    const writer = fs.createWriteStream(newPath, { flags: "w" });
-    const time = await procLines(oldPath, writer);
+    const log = (val: number) => {
+        console.log("Progress: " + val);
+    };
+
+    const time = GCoder.TimeFile(oldPath, newPath, log);
+
+    // const time = await procFile(oldPath, newPath);
     setFileTime((n === 1) ? (parsed.name) : `${parsed.name}(${n})`, time);
 
     await fs.unlink(oldPath);
