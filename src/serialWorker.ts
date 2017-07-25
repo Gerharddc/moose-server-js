@@ -148,7 +148,7 @@ function resolveLinesRoom() {
 // Synchronously sends line
 // it is assumed they don't have comments
 function sendLine(line: string, resolve?: CallBack | undefined,
-    reject?: CallBack | undefined, externalResolve = false) {
+                  reject?: CallBack | undefined, externalResolve = false) {
     if (port === null) {
         reportError("Printer serial port not open for writing");
         return;
@@ -186,7 +186,7 @@ async function sendLineAsync(line: string) {
 }
 
 let watingForTemp = false;
-/*setInterval(async () => {
+setInterval(async () => {
     if (watingForTemp) {
         return;
     }
@@ -216,7 +216,7 @@ let watingForTemp = false;
     }
 
     watingForTemp = false;
-}, 1000);*/
+}, 1000);
 
 function handleSerialResponse(resp: string): void {
     if (resp.includes("rs")) {
@@ -270,24 +270,15 @@ function sendFile(fileName: string, fileTime: number) {
         lineReader.pause();
 
         // Decode the line back to a gcode string
-        const json = JSON.parse(line);
-        if (json.blocks) {
-            const blocks: Map<string, string> = new Map(json.blocks);
+        const parts = line.split(";");
+        const gcode = parts[0];
+        const time = parseFloat(parts[1]);
 
-            let gcode = "";
-            blocks.forEach((value, key) => {
-                gcode += key + value;
-            });
+        await waitForLinesRoom();
+        sendLineAsync(gcode);
 
-            await waitForLinesRoom();
-            sendLineAsync(gcode);
-        }
-
-        if (json.time) {
-            fileTime -= json.time;
-
-            reportTimeLeft(fileTime);
-        }
+        fileTime -= time;
+        reportTimeLeft(fileTime);
 
         lineReader.resume();
     });
