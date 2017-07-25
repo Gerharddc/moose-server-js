@@ -34,8 +34,7 @@ void TimeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
     return;
   }
 
-	if (!args[0]->IsString() || !args[1]->IsString() || 
-		!args[2]->IsFunction() /*|| !args[3]->IsFunction()*/) {
+	if (!args[0]->IsString() || !args[1]->IsString() || !args[2]->IsFunction()) {
 		isolate->ThrowException(v8::Exception::TypeError(
 			v8::String::NewFromUtf8(isolate, "Wrong argument types")
 		));
@@ -46,12 +45,9 @@ void TimeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 	v8::String::Utf8Value param2(args[1]->ToString());
 
 	v8::Local<v8::Function> cb = v8::Local<v8::Function>::Cast(args[2]);
-	//v8::Local<v8::Function> cb2 = v8::Local<v8::Function>::Cast(args[3]);
 
 	std::ifstream inFile(*param1);
   std::ofstream outFile(*param2);
-
-	//args.GetReturnValue().SetUndefined();
 	
 	inFile.seekg(0, std::ifstream::end);
   long max = inFile.tellg();
@@ -153,8 +149,6 @@ void TimeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 	inFile.close();
 	outFile.close();
 
-	//v8::Local<v8::Value> argv[1] = {v8::Number::New(isolate, static_cast<double>(fileTime))};
-	//cb2->Call(v8::Null(isolate), 1, argv);
 	args.GetReturnValue().Set(v8::Number::New(isolate, static_cast<double>(fileTime)));
 }
 

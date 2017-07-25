@@ -41,15 +41,23 @@ function setFileTime(file: string, time: number) {
 // tslint:disable-next-line:no-var-requires
 const GCoder = require("../build/Release/gcoder");
 
-/*function procFile(inFile: string, outFile: string): Promise<number> {
-    return new Promise((resolve, reject) => {
-        const log = (val: number) => {
-            console.log("Progress: " + val);
-        };
+function setProcessing(processing: boolean) {
+    if (process.send) {
+        process.send({
+            processing,
+            type: "processing",
+        });
+    }
+}
 
-        GCoder.TimeFile(inFile, outFile, log, (time: number) => resolve(time));
-    });
-}*/
+function setProcProg(procprog: number) {
+    if (process.send) {
+        process.send({
+            procprog,
+            type: "procProg",
+        });
+    }
+}
 
 async function processFile(file: Express.Multer.File) {
     // Determine the final name
@@ -68,11 +76,7 @@ async function processFile(file: Express.Multer.File) {
         newPath = `${Files.readyPath}${parsed.name}(${n})`;
     }
 
-    const log = (val: number) => {
-        console.log("Progress: " + val);
-    };
-
-    const time = GCoder.TimeFile(oldPath, newPath, log);
+    const time = GCoder.TimeFile(oldPath, newPath, setProcProg);
 
     // const time = await procFile(oldPath, newPath);
     setFileTime((n === 1) ? (parsed.name) : `${parsed.name}(${n})`, time);
@@ -99,21 +103,27 @@ try {
 }
 
 app.post("/upload", upload.single("gcode"), async (req, res, next) => {
-    console.log("Upload: " + req.file.filename);
-    await processFile(req.file);
     res.write("ok");
+
+    console.log("Upload: " + req.file.filename);
+
+    setProcessing(true);
+    await processFile(req.file);
+    setProcessing(false);
     notifyFiles();
 });
 
 app.post("/uploads", upload.array("gcodes"), async (req, res, next) => {
+    res.write("ok");
+
     if (req.files instanceof Array) {
+        setProcessing(true);
         for (const file of req.files) {
             console.log("Upload: " + file.filename);
             await processFile(file);
         }
+        setProcessing(false);
 
         notifyFiles();
     }
-
-    res.write("ok");
 });

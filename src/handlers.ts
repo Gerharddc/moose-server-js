@@ -278,6 +278,22 @@ const handlerFunctions: {[index: string]: HandlerFunction} = {
             throw new Error("GetFileETA-Error: " + e.message);
         }
     },
+
+    GetProcessing: async (data: any, client: WebSocket) => {
+        try {
+            return Files.getProcessing();
+        } catch (e) {
+            throw new Error("GetProcessing-Error: " + e.message);
+        }
+    },
+
+    GetProcProg: async (data: any, client: WebSocket) => {
+        try {
+            return Files.getProcProg();
+        } catch (e) {
+            throw new Error("GetProcProg-Error: " + e.message);
+        }
+    },
 };
 
 import * as WebSocket from "ws";

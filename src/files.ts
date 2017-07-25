@@ -10,6 +10,9 @@ export const rawPath = rootPath + "raw/";
 
 let workerProcess: child_process.ChildProcess;
 
+let processing = false;
+let procProg = 0;
+
 export function Init() {
     workerProcess = child_process.fork(__dirname + "/fileWorker.js");
     workerProcess.on("message", async (msg) => {
@@ -22,6 +25,14 @@ export function Init() {
                 break;
             case "notifyFiles":
                 Notify("Printer", 0, "Files", null);
+                break;
+            case "processing":
+                processing = msg.processing;
+                Notify("Printer", 0, "Processing", null);
+                break;
+            case "procProg":
+                procProg = msg.procprog;
+                Notify("Printer", 0, "ProcProg", null);
                 break;
         }
     });
@@ -62,4 +73,12 @@ export async function deleteFile(file: string) {
 
 export async function getETA(file: string) {
     return millisToETA(await getFileTime(file) || 0);
+}
+
+export function getProcessing() {
+    return processing;
+}
+
+export function getProcProg() {
+    return procProg;
 }
