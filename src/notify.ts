@@ -2,7 +2,7 @@ import * as WebSocket from "ws";
 
 let clients: WebSocket[] = [];
 
-export function Notify(systemName: string, id: number, property: string, setter: WebSocket | null) {
+export function Notify(systemName: string, id: number, property: string, setter?: WebSocket | null) {
     const resp = JSON.stringify({
         id,
         property,

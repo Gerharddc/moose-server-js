@@ -1,3 +1,4 @@
+import * as async from "async";
 import * as ConnMan from "connman-node-api";
 import * as WebSocket from "ws";
 import { Notify, NotifyError } from "./notify";
@@ -91,21 +92,39 @@ connman.init((err) => {
                                         Name: ap.Name,
                                         Secured: ap.Security !== "none",
                                     };
+                                    connectedSSID = connectingSSID;
                                 }
                             });
                             notifyConnected();
+                            setTimeout(() => scanWifi(), 500);
                             return;
                         }
                     }
 
-                    NotifyError("No such access point");
+                    NotifyError("Could not identify acces point connected to");
                 });
-            } else if (!Hosting) {
+            } else {
                 // Scan for availale networks and start hosting if we could
-                // not autoconnect
-                scanWifi(() => {
-                    startHosting(HostingSSID, HostingPWD, null);
-                });
+                async.series([
+                    (next) => {
+                        if (Hosting) {
+                            console.log("Stopping hosting for scan");
+                            stopHosting();
+                            setTimeout(next, 500);
+                        } else {
+                            next();
+                        }
+                    },
+                    (next) => {
+                        console.log("Scanning");
+                        scanWifi();
+                        setTimeout(next, 2000);
+                    },
+                    (next) => {
+                        console.log("Starting hosting again");
+                        startHosting(HostingSSID, HostingPWD, null);
+                    },
+                ]);
             }
         });
     }
@@ -252,28 +271,61 @@ export function connectSSID(ssid: SSID, password: string) {
         });
     };
 
-    if (Hosting) {
-        // TODO
-        stopHosting(null);
-    }
-
-    wifi.getServices((err, services) => {
-        for (const serviceName in services) {
-            if (services[serviceName].Name === ssid.Name) {
-                connman.getService(serviceName, (err2, ser) => {
-                    if (err2) {
-                        console.log("Getservice-error: " + err2);
-                        NotifyError("Connection error: " + err2);
-                    } else {
-                        connectToService(ser);
-                    }
-                });
-                return;
-            }
+    const doConnect = () => {
+        if (!wifi) {
+            return;
         }
 
-        NotifyError("No such access point");
-    });
+        wifi.getServices((err, services) => {
+            for (const serviceName in services) {
+                if (services[serviceName].Name === ssid.Name) {
+                    connman.getService(serviceName, (err2, ser) => {
+                        if (err2) {
+                            console.log("Getservice-error: " + err2);
+                            NotifyError("Connection error: " + err2);
+                        } else {
+                            connectToService(ser);
+
+                            setTimeout(() => scanWifi(), 500);
+                        }
+                    });
+                    return;
+                }
+            }
+
+            NotifyError("No such access point");
+        });
+    };
+
+    if (Hosting) {
+        async.series([
+            (next) => {
+                console.log("Stopping hosting for connecting");
+                stopHosting();
+                setTimeout(next, 500);
+            },
+            (next) => {
+                console.log("Scanning before connect");
+                scanWifi();
+                setTimeout(next, 1000);
+            },
+            (next) => {
+                console.log("Trying to connect");
+                doConnect();
+                setTimeout(next, 1000);
+            },
+            (next) => {
+                if (connected) {
+                    console.log("Connection successful");
+                } else {
+                    console.log("Connection unsuccessful, restarting host");
+                    startHosting(HostingSSID, HostingPWD);
+                }
+            },
+        ]);
+    } else {
+        doConnect();
+    }
 }
 
 export function getConnectedSSID() {
@@ -288,6 +340,11 @@ export function disconnect() {
     if (connectedService) {
         connectedService.disconnect(() => {
             console.log("Requested disconnect");
+
+            setTimeout(() => {
+                console.log("Restarted host after disconnect");
+                startHosting(HostingSSID, HostingPWD);
+            }, 1000);
         });
     }
 }
@@ -304,7 +361,7 @@ export function getHostingPWD() {
     return HostingPWD;
 }
 
-export function startHosting(ssid: string, pwd: string, client: WebSocket | null) {
+export function startHosting(ssid: string, pwd: string, client?: WebSocket | null) {
     let changed = false;
 
     if (ssid !== HostingSSID) {
@@ -344,7 +401,7 @@ export function startHosting(ssid: string, pwd: string, client: WebSocket | null
     });
 }
 
-export function stopHosting(client: WebSocket | null) {
+export function stopHosting(client?: WebSocket | null) {
     if (!wifi) {
         throw new Error("Wifi technology not available");
     }
