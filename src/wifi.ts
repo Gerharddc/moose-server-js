@@ -79,25 +79,32 @@ connman.init((err) => {
             if (connected) {
                 // Find the connected service
                 wifi.getServices((err2, services) => {
+                    console.log("Got services");
+
+                    // tslint:disable-next-line:forin
                     for (const serviceName in services) {
-                        if (services[serviceName].State === "ready") {
+                        const serv = services[serviceName];
+                        if (serv.State === "ready" || serv.State === "online") {
                             connman.getService(serviceName, (err3, ser) => {
                                 if (err3) {
                                     console.log("Getservice-error: " + err3);
                                     NotifyError("Connection error: " + err3);
                                 } else {
                                     connectedService = ser;
-                                    const ap = services[serviceName];
                                     connectingSSID = {
-                                        Name: ap.Name,
-                                        Secured: ap.Security !== "none",
+                                        Name: serv.Name,
+                                        Secured: serv.Security !== "none",
                                     };
                                     connectedSSID = connectingSSID;
+
+                                    console.log("Connected to: " + serv.Name);
                                 }
                             });
                             notifyConnected();
                             setTimeout(() => scanWifi(), 500);
                             return;
+                        } else {
+                            console.log(serviceName + ":" + services[serviceName].State);
                         }
                     }
 
@@ -227,6 +234,7 @@ function handleServiceChange(name: any, value: any) {
                 break;
             case "online":
                 console.log("Online...");
+                notifyConnected();
             case "ready":
                 console.log("Connected");
                 notifyConnected();
