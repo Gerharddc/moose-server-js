@@ -191,6 +191,14 @@ const handlerFunctions: {[index: string]: HandlerFunction} = {
         }
     },
 
+    HomeAxis: (data: any, client: WebSocket) => {
+        try {
+            Printer.homeAxis(data.axis);
+        } catch (e) {
+            throw new Error("HomeAxis-Error: " + e.message);
+        }
+    },
+
     GetFiles: async (data: any, client: WebSocket) => {
         try {
             return await Files.listFiles();

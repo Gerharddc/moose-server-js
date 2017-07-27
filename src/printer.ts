@@ -57,7 +57,19 @@ export function moveAxis(distance: number, speed: number, forward: boolean, axis
         throw new Error("Unkown axis: " + axis);
     }
 
-    line += " F" + speed;
+    // mm/s to mm/minute
+    line += " F" + (speed * 60);
+    Serial.sendLine(line);
+}
+
+export function homeAxis(axis: string) {
+    let line = "G28 ";
+    if (["x", "y", "z", "e"].indexOf(axis) > -1) {
+        line += axis.toUpperCase();
+    } else {
+        throw new Error("Unkown axis: " + axis);
+    }
+
     Serial.sendLine(line);
 }
 

@@ -66,9 +66,9 @@ process.on("message", (msg) => {
 
 let port: SerialPort | null = null;
 try {
-    port = new SerialPort("/dev/ttyS0", {
-        baudRate: 57600,
-        parser: SerialPort.parsers.readline("\r\n"),
+    port = new SerialPort("/dev/ttyACM0", {
+        baudRate: 460800,
+        parser: SerialPort.parsers.readline("\n"),
     });
 
     port.on("error", (err) => {
@@ -99,7 +99,7 @@ export function sendCode(code: string) {
         return;
     }
 
-    port.write(code);
+    port.write(code + "\n");
 }
 
 let curLineNum = 1;
@@ -148,7 +148,7 @@ function resolveLinesRoom() {
 // Synchronously sends line
 // it is assumed they don't have comments
 function sendLine(line: string, resolve?: CallBack | undefined,
-                  reject?: CallBack | undefined, externalResolve = false) {
+    reject?: CallBack | undefined, externalResolve = false) {
     if (port === null) {
         reportError("Printer serial port not open for writing");
         return;
@@ -185,14 +185,11 @@ async function sendLineAsync(line: string) {
     });
 }
 
-let watingForTemp = false;
 setInterval(async () => {
-    if (watingForTemp) {
-        return;
-    }
+    sendCode("M105");
+}, 1000);
 
-    watingForTemp = true;
-    const resp = String(await sendLineAsync("M105"));
+function readTemp(resp: string) {
     const regex = /T:(\d+\.?\d+) B:(\d+\.?\d+)/;
     const extract = regex.exec(resp);
 
@@ -214,39 +211,43 @@ setInterval(async () => {
     } else {
         console.log("Invalid temp response: " + resp);
     }
-
-    watingForTemp = false;
-}, 1000);
+}
 
 function handleSerialResponse(resp: string): void {
+    console.log("Serial: " + resp);
+
     if (resp.includes("rs")) {
         const ln = Number(resp.split(" "[1]));
         sendCode(String(sentLineMap.get(ln)));
     } else if (resp.includes("ok")) {
-        const ln = Number(resp.split(" "[1]));
-        sentLines--;
-        const line = sentLineMap.get(ln);
-        let resolve;
-        let externalResolve;
-        if (line) {
-            resolve = line.resolve;
-            externalResolve = line.externalResolve;
-        }
-
-        sentLineMap.delete(ln);
-        if (resolve) {
-            if (externalResolve && process.send) {
-                process.send({
-                    resolve,
-                    resp,
-                    type: "callResolve",
-                });
-            } else {
-                resolve(resp);
+        if (resp.includes("T:")) {
+            readTemp(resp);
+        } else {
+            const ln = Number(resp.split(" "[1]));
+            sentLines--;
+            const line = sentLineMap.get(ln);
+            let resolve;
+            let externalResolve;
+            if (line) {
+                resolve = line.resolve;
+                externalResolve = line.externalResolve;
             }
-        }
 
-        resolveLinesRoom();
+            sentLineMap.delete(ln);
+            if (resolve) {
+                if (externalResolve && process.send) {
+                    process.send({
+                        resolve,
+                        resp,
+                        type: "callResolve",
+                    });
+                } else {
+                    resolve(resp);
+                }
+            }
+
+            resolveLinesRoom();
+        }
     }
 }
 

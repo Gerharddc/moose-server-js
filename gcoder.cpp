@@ -1,17 +1,17 @@
 #include <node.h>
 #include <iostream>
 #include <fstream>
-#include <sstream>
 #include <cmath>
+#include <cstring>
+#include <cstdlib>
 
-const int maxValue = 10;  
+const int maxValue = 10;
 int numberOfCalls = 0;
 
 struct Poses {
 		float X = 0;
 		float Y = 0;
 		float Z = 0;
-		float E = 0;
 };
 
 struct TempPoses {
@@ -20,19 +20,18 @@ struct TempPoses {
 		float X = -1;
 		float Y = -1;
 		float Z = -1;
-		float E = 1;
 };
 
-void TimeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {  
+void TimeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 	v8::Isolate* isolate = args.GetIsolate();
 
 	// Check arguments
-  if (args.Length() < 3) {
-    isolate->ThrowException(v8::Exception::TypeError(
-    	v8::String::NewFromUtf8(isolate, "Wrong number of arguments")
+	if (args.Length() < 3) {
+		isolate->ThrowException(v8::Exception::TypeError(
+			v8::String::NewFromUtf8(isolate, "Wrong number of arguments")
 		));
-    return;
-  }
+		return;
+	}
 
 	if (!args[0]->IsString() || !args[1]->IsString() || !args[2]->IsFunction()) {
 		isolate->ThrowException(v8::Exception::TypeError(
@@ -47,54 +46,69 @@ void TimeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 	v8::Local<v8::Function> cb = v8::Local<v8::Function>::Cast(args[2]);
 
 	std::ifstream inFile(*param1);
-  std::ofstream outFile(*param2);
-	
+	std::ofstream outFile(*param2);
+
 	inFile.seekg(0, std::ifstream::end);
-  long max = inFile.tellg();
-  inFile.seekg(0, std::ifstream::beg);
+	double max = inFile.tellg();
+	inFile.seekg(0, std::ifstream::beg);
 
-	Poses lastPoses = Poses();
-  double fileTime = 0;
+	Poses lastPoses;
+	double fileTime = 0;
 
-  float lastFs[2] = {0};
+	float lastFs[2] = {0};
 
-  bool goingRelative = false;
-  int lastProg = -1;
+	bool goingRelative = false;
+	int lastProg = -1;
 
-	std::string line;
-	while(std::getline(inFile, line)) {
-		// Remove comment
-		std::string tok;
-		std::getline(std::stringstream(line), tok, ';');
-		line = tok;
-
-		if (line == "")
+	char lineBuf[150];
+	while(inFile.getline(lineBuf, 150)) {
+		if (lineBuf[0] ==  ';')
 			continue;
+
+		uint8_t bufSize = 0;
+		bool running = true;
+		while (running && bufSize < 149) {
+			char b = lineBuf[bufSize];
+			if (b == ';' || b == '\0') {
+				running = false;
+			} else {
+				bufSize++;
+			}
+		}
+
+		// Make the last character a space to trigger the
+		// below code
+		lineBuf[bufSize] = ' ';
 
 		TempPoses temp;
 
-		std::stringstream ss(line);
-		while (std::getline(ss, tok, ' ')) {
-			switch (tok[0]) {
-				case 'X':
-					temp.X = stof(tok.substr(1));
-					break;
-				case 'Y':
-					temp.Y = stof(tok.substr(1));
-					break;
-				case 'Z':
-					temp.Z = stof(tok.substr(1));
-					break;
-				case 'E':
-					temp.E = stof(tok.substr(1));
-					break;
-				case 'G':
-					temp.G = stoi(tok.substr(1));
-					break;
-				case 'F':
-					temp.F = stof(tok.substr(1));
-					break;
+		uint8_t startIdx = 0;
+		uint8_t endIdx = 0;
+		while (endIdx <= bufSize) {
+			if (lineBuf[endIdx] == ' ') {
+				const char* numStr = &(lineBuf[startIdx + 1]);
+				switch (lineBuf[startIdx]) {
+					case 'X':
+						temp.X = strtof(numStr, NULL);
+						break;
+					case 'Y':
+						temp.Y = strtof(numStr, NULL);
+						break;
+					case 'Z':
+						temp.Z = strtof(numStr, NULL);
+						break;
+					case 'G':
+						temp.G = strtof(numStr, NULL);
+						break;
+					case 'F':
+						temp.F = strtof(numStr, NULL);
+						break;
+				}
+
+				startIdx = endIdx + 1;
 			}
+
+			endIdx++;
 		}
 
 		double lineTime = 0;
@@ -102,7 +116,7 @@ void TimeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 		const int g = temp.G;
 		if (g == 0 || g == 1) {
 			if (temp.F > 0) {
-				lastFs[g] = temp.F / 6000;
+				lastFs[g] = temp.F / 60000.0;
 			}
 
 			float dist = 0;
@@ -122,7 +136,6 @@ void TimeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 			DOAXIS(X);
 			DOAXIS(Y);
 			DOAXIS(Z);
-			DOAXIS(E);
 
 			dist = sqrt(dist);
 
@@ -135,7 +148,7 @@ void TimeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 			goingRelative = true;
 		}
 
-		int prog = round((float)inFile.tellg() / (float)max * 100.0);
+		int prog = round((double)inFile.tellg() / max * 100.0);
 		if (prog != lastProg) {
 			lastProg = prog;
 
@@ -143,7 +156,8 @@ void TimeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 			cb->Call(v8::Null(isolate), 1, argv);
 		}
 
-		outFile << line + ";" <<  lineTime << std::endl;
+		lineBuf[bufSize] = '\0';
+		outFile << lineBuf << ";" <<  lineTime << '\n';
 	}
 
 	inFile.close();
@@ -152,8 +166,8 @@ void TimeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 	args.GetReturnValue().Set(v8::Number::New(isolate, static_cast<double>(fileTime)));
 }
 
-void Initialize(v8::Local<v8::Object> exports) {  
+void Initialize(v8::Local<v8::Object> exports) {
 	NODE_SET_METHOD(exports, "TimeFile", TimeFile);
 }
 
-NODE_MODULE(module_name, Initialize)  
+NODE_MODULE(module_name, Initialize)
