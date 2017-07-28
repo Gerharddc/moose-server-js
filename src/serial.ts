@@ -21,7 +21,7 @@ export function Init() {
             case "timeLeft":
                 Printer.updateTimeLeft(msg.timeLeft);
             case "error":
-                NotifyError(msg.error);
+                // NotifyError(msg.error);
                 break;
         }
     });
@@ -50,13 +50,18 @@ export function resetLineNum(): void {
 
 // Synchronously sends line as soon as there is room
 export function sendLine(line: string) {
-    return new Promise((resolve, reject) => {
+    /*return new Promise((resolve, reject) => {
         workerProcess.send({
             action: "sendLine",
             line,
             reject,
             resolve,
         });
+    });*/
+
+    workerProcess.send({
+        action: "sendLine",
+        line,
     });
 }
 

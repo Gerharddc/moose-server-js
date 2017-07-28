@@ -64,7 +64,7 @@ export function moveAxis(distance: number, speed: number, forward: boolean, axis
 
 export function homeAxis(axis: string) {
     let line = "G28 ";
-    if (["x", "y", "z", "e"].indexOf(axis) > -1) {
+    if (["x", "y", "z"].indexOf(axis) > -1) {
         line += axis.toUpperCase();
     } else {
         throw new Error("Unkown axis: " + axis);

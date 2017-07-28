@@ -3,6 +3,9 @@ import * as LineByLineReader from "line-by-line";
 import * as SerialPort from "serialport";
 import { readyPath } from "./files";
 
+// tslint:disable-next-line:no-var-requires
+const GCoder = require("../build/Release/gcoder");
+
 class PrintFlow extends EventEmitter {
     private paused: boolean = false;
     private stopped: boolean = true;
@@ -41,13 +44,14 @@ const printFlow = new PrintFlow();
 process.on("message", (msg) => {
     switch (msg.action) {
         case "sendCode":
-            sendCode(msg.code);
+            // sendCode(msg.code);
             break;
         case "sendLine":
-            sendLine(msg.line, msg.resolve, msg.reject, true);
+            // sendLine(msg.line, msg.resolve, msg.reject, true);
+            sendLine(msg.line);
             break;
         case "resetLineNum":
-            resetLineNum();
+            // resetLineNum();
             break;
         case "sendFile":
             sendFile(msg.filePath, msg.fileTime);
@@ -64,22 +68,47 @@ process.on("message", (msg) => {
     }
 });
 
-let port: SerialPort | null = null;
+const port = GCoder.OpenPort("/dev/ttyACM0");
+console.log("Port: " + port);
+
+function sendLine(line: string) {
+    if (port !== -1) {
+        console.log("sending: " + line);
+        GCoder.SendLine(port, line);
+    }
+}
+
+function sendFile(fileName: string, fileTime: number) {
+    if (port !== -1) {
+        console.log("sending: " + readyPath + fileName);
+        GCoder.SendFile(port, readyPath + fileName, (dat: number) => {
+            console.log(dat);
+        });
+    }
+}
+
+/*let port: SerialPort | null = null;
 try {
     port = new SerialPort("/dev/ttyACM0", {
         baudRate: 460800,
         parser: SerialPort.parsers.readline("\n"),
+        xoff: true,
+        xon: true,
     });
 
     port.on("error", (err) => {
         console.log("SerialPort-error: " + err);
     });
 
-    port.on("open", () => console.log("Port open"));
+    port.on("open", () => {
+        console.log("Port open");
+        port!.write("M111 S0\n");
+    });
 
     port.on("data", (data) => {
         handleSerialResponse(data);
     });
+
 } catch (e) {
     console.log("SerialPort-error: " + e.message);
 }
@@ -109,9 +138,9 @@ export function resetLineNum(): void {
     curLineNum = 0;
 }
 
-const sentLineMap = new Map();
+const sentLineMap: Map<number, any> = new Map();
 let sentLines = 0;
-const maxSentLines = 20;
+const maxSentLines = 50;
 
 function incrementLineNum() {
     // Wrap line numbers if needed
@@ -166,6 +195,7 @@ function sendLine(line: string, resolve?: CallBack | undefined,
     cs &= 0xff;
     line += cs;
 
+    // console.log("Sending line: " + line);
     sendCode(line);
 
     sentLineMap.set(curLineNum, {
@@ -185,9 +215,9 @@ async function sendLineAsync(line: string) {
     });
 }
 
-setInterval(async () => {
+/*setInterval(async () => {
     sendCode("M105");
-}, 1000);
+}, 1000);*
 
 function readTemp(resp: string) {
     const regex = /T:(\d+\.?\d+) B:(\d+\.?\d+)/;
@@ -214,8 +244,6 @@ function readTemp(resp: string) {
 }
 
 function handleSerialResponse(resp: string): void {
-    console.log("Serial: " + resp);
-
     if (resp.includes("rs")) {
         const ln = Number(resp.split(" "[1]));
         sendCode(String(sentLineMap.get(ln)));
@@ -223,8 +251,13 @@ function handleSerialResponse(resp: string): void {
         if (resp.includes("T:")) {
             readTemp(resp);
         } else {
-            const ln = Number(resp.split(" "[1]));
             sentLines--;
+            let ln = Number(resp.split(" "[1]));
+
+            if (!ln) {
+                ln = sentLineMap.keys().next().value;
+            }
+
             const line = sentLineMap.get(ln);
             let resolve;
             let externalResolve;
@@ -248,6 +281,8 @@ function handleSerialResponse(resp: string): void {
 
             resolveLinesRoom();
         }
+    } else {
+        console.log("Serial: " + resp);
     }
 }
 
@@ -260,28 +295,56 @@ function reportTimeLeft(timeLeft: number) {
     }
 }
 
+let lineReader: LineByLineReader | null = null;
+
+printFlow.on("pause", () => {
+    if (lineReader) {
+        lineReader.pause();
+    }
+});
+
+printFlow.on("resume", () => {
+    if (lineReader) {
+        lineReader.resume();
+    }
+});
+
+printFlow.on("stop", () => {
+    if (lineReader) {
+        lineReader.pause();
+        lineReader.close();
+    }
+});
+
 function sendFile(fileName: string, fileTime: number) {
-    const lineReader = new LineByLineReader(readyPath + fileName);
+    lineReader = new LineByLineReader(readyPath + fileName);
+
+    printFlow.startPrint();
+    console.log("Sending: " + readyPath + fileName);
 
     lineReader.on("line", async (line) => {
-        if (printFlow.Paused || printFlow.Stopped) {
+        /*if (printFlow.Paused || printFlow.Stopped) {
             return;
-        }
+        }*
+        // console.log("Line: " + line);
 
-        lineReader.pause();
+        // lineReader!.pause();
 
         // Decode the line back to a gcode string
         const parts = line.split(";");
         const gcode = parts[0];
         const time = parseFloat(parts[1]);
 
-        await waitForLinesRoom();
-        sendLineAsync(gcode);
+        // await waitForLinesRoom();
+        // sendLineAsync(gcode);
+        if (port) {
+            port.write(gcode + "\n");
+        }
 
         fileTime -= time;
         reportTimeLeft(fileTime);
 
-        lineReader.resume();
+        // lineReader!.resume();
     });
 
     lineReader.on("error", (err) => {
@@ -290,25 +353,16 @@ function sendFile(fileName: string, fileTime: number) {
     });
 
     lineReader.on("end", () => {
+        console.log("Reader done");
+
         if (process.send) {
             process.send({
                 type: "notifyPrintDone",
             });
         }
-    });
 
-    printFlow.on("pause", () => {
-        lineReader.pause();
+        lineReader = null;
     });
-
-    printFlow.on("resume", () => {
-        lineReader.resume();
-    });
-
-    printFlow.on("stop", () => {
-        lineReader.pause();
-        lineReader.close();
-    });
-}
+}*/
 
 console.log("Serial worker");
