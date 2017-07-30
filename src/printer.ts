@@ -15,12 +15,55 @@ export const tempUpdateEmitter = new TempUpdateEmitter();
 import * as Files from "./files";
 import Heater from "./heater";
 import * as Notify from "./notify";
-import * as Serial from "./serial";
 
 const heaters: Heater[] = [];
 
-heaters.push(new Heater(0, "Extruder"));
-heaters.push(new Heater(1, "Heatbed", true));
+// tslint:disable-next-line:no-var-requires
+const Printer = require("../build/Release/printer");
+
+export function Init() {
+    Printer.OpenPort("/dev/ttyACM0", (type: string, data: any) => {
+
+        switch (type) {
+            case "alltemp":
+                tempUpdateEmitter.emitBedTemp(data);
+                tempUpdateEmitter.emitExtTemp(data);
+                console.log("temp: " + data);
+                break;
+            case "etemp":
+                tempUpdateEmitter.emitExtTemp(data);
+                break;
+            case "btemp":
+                tempUpdateEmitter.emitBedTemp(data);
+                break;
+            case "harderror":
+                console.log("Hardware error");
+                Notify.NotifyError("Hardware error, firmware shut down");
+            case "unknown":
+                console.log("unknown: " + data);
+                break;
+        }
+    });
+
+    process.on("exit", () => {
+        Printer.ClosePort();
+    });
+
+    heaters.push(new Heater(0, "Extruder"));
+    heaters.push(new Heater(1, "Heatbed", true));
+
+    setInterval(() => {
+        try {
+            Printer.RequestTemp();
+        } catch (e) {
+            console.log("Temp exception: " + e);
+        }
+    }, 2000);
+}
+
+export function SendLine(line: string) {
+    Printer.SendLine(line);
+}
 
 export function getHeater(id: number): Heater {
     for (const heater of heaters) {
@@ -43,7 +86,7 @@ export function getHeaterList(): number[] {
 
 export function moveAxis(distance: number, speed: number, forward: boolean, axis: string) {
     // Set relative movement
-    Serial.sendLine("G91");
+    Printer.SendLine("G91");
 
     let dist = distance;
     if (!forward) {
@@ -59,22 +102,24 @@ export function moveAxis(distance: number, speed: number, forward: boolean, axis
 
     // mm/s to mm/minute
     line += " F" + (speed * 60);
-    Serial.sendLine(line);
+    Printer.SendLine(line);
 }
 
 export function homeAxis(axis: string) {
     let line = "G28 ";
     if (["x", "y", "z"].indexOf(axis) > -1) {
         line += axis.toUpperCase();
+    } else if (axis === "a") {
+        line += "X Y Z";
     } else {
         throw new Error("Unkown axis: " + axis);
     }
 
-    Serial.sendLine(line);
+    Printer.SendLine(line);
 }
 
 let fileTime = 0;
-let timeLeft = 0;
+let printedTime = 0;
 let printing = false;
 let paused = false;
 let progress = 50;
@@ -93,10 +138,13 @@ export function millisToETA(time: number) {
 }
 
 export function updateTimeLeft(time: number) {
-    timeLeft = time;
-    progress = Math.round((fileTime - timeLeft) / fileTime * 10000) / 100;
+    printedTime = time;
+    progress = Math.round(time / fileTime * 10000) / 100;
 
-    eta = millisToETA(time);
+    eta = millisToETA(fileTime - time);
+
+    Notify.Notify("Printer", 0, "Progress", null);
+    Notify.Notify("Printer", 0, "ETA", null);
 }
 
 export function getPrinting() {
@@ -128,23 +176,33 @@ function setPaused(val: boolean) {
 export async function printFile(fileName: string) {
     fileTime = await Files.getFileTime(fileName);
     updateTimeLeft(fileTime);
-    Serial.sendFile(fileName, fileTime);
+
+    Printer.SendFile(Files.readyPath + fileName, (type: string, data: any) => {
+        if (type === "time") {
+            updateTimeLeft(data);
+        } else {
+            console.log(type + ": " + data);
+        }
+    });
+
+    updateTimeLeft(0);
+
     setPrinting(true);
 }
 
 export function pauseFilePrint() {
-    Serial.pauseFileSend();
+    Printer.PausePrint();
     setPaused(true);
 }
 
 export function resumeFilePrint() {
-    Serial.resumeFileSend();
+    Printer.ResumePrint();
     setPaused(false);
 }
 
 export function stopFilePrint() {
-    Serial.stopFileSend();
-    setPrinting(true);
+    Printer.StopPrint();
+    setPrinting(false);
 }
 
 export function donePrint() {

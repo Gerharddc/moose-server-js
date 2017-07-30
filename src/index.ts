@@ -2,6 +2,12 @@ import * as express from "express";
 import * as storage from "node-persist";
 import { Notify } from "./notify";
 
+process.on( "SIGINT", () => {
+  console.log( "\nGracefully shutting down from SIGINT (Ctrl-C)" );
+  // some other closing procedures go here
+  process.exit( );
+});
+
 // Get the storage ready before we start the application
 storage.initSync();
 
@@ -37,7 +43,7 @@ wss.on("connection", (ws) => {
   console.log("New connection");
 
   ws.on("message", async (message) => {
-    console.log("message: " + message);
+    // console.log("message: " + message);
 
     ws.send(await HandleRequest(String(message), ws));
   });
@@ -49,6 +55,6 @@ wss.on("connection", (ws) => {
 });
 
 import * as Files from "./files";
-import * as Serial from "./serial";
+import * as Printer from "./printer";
 Files.Init();
-Serial.Init();
+Printer.Init();

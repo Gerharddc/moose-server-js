@@ -1,8 +1,6 @@
 import * as WebSocket from "ws";
 import { Notify } from "./notify";
 import * as Printer from "./printer";
-import * as Serial from "./serial";
-
 const SystemName = "Heater";
 
 export default class Heater {
@@ -73,9 +71,9 @@ export default class Heater {
         const temp = (this.heating) ? this.targetTemp : -300.0;
 
         if (this.heatbed) {
-            Serial.sendLine("M140 S" + temp);
+            Printer.SendLine("M140 S" + temp);
         } else {
-            Serial.sendLine("M104 S" + temp);
+            Printer.SendLine("M104 S" + temp);
         }
     }
 
