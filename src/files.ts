@@ -1,4 +1,4 @@
-import * as fs from "async-file";
+import * as fs from "mz/fs";
 import * as child_process from "child_process";
 import * as storage from "node-persist";
 import { Notify, NotifyError } from "./notify";

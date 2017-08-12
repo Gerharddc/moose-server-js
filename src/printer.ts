@@ -19,7 +19,7 @@ import * as Notify from "./notify";
 const heaters: Heater[] = [];
 
 // tslint:disable-next-line:no-var-requires
-const Printer = require("../build/Release/printer");
+const Printer = require("../build/Release/printer.node");
 
 export function Init() {
     Printer.OpenPort("/dev/ttyACM0", (type: string, data: any) => {

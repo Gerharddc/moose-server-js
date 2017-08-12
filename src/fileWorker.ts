@@ -1,4 +1,4 @@
-import * as fs from "async-file";
+import * as fs from "mz/fs";
 import * as LineByLineReader from "line-by-line";
 import * as path from "path";
 import * as Files from "./files";
@@ -39,7 +39,7 @@ function setFileTime(file: string, time: number) {
 }
 
 // tslint:disable-next-line:no-var-requires
-const GCoder = require("../build/Release/gcoder");
+const GCoder = require("../build/Release/gcoder.node");
 
 function setProcessing(processing: boolean) {
     if (process.send) {
