@@ -180,15 +180,15 @@ export async function scanWifi(callback: (() => void) | null = null) {
         throw new Error("Wifi technology not available");
     }
 
-    console.log("Scanning...");
-
     const resumeHost = Hosting;
     if (resumeHost) {
         NotifyInfo("Wifi hosting will be disabled to perform the scan. You will have to reconnect after 1 second.");
         console.log("Disabling tether before scan");
         stopHosting();
-        await sleep(1000);
+        await sleep(5000);
     }
+
+    console.log("Scanning...");
 
     wifi.scan(() => {
         // Getting list of access points
@@ -205,7 +205,7 @@ export async function scanWifi(callback: (() => void) | null = null) {
 
             if (resumeHost) {
                 startHosting(HostingSSID, HostingPWD);
-                await sleep(10000);
+                await sleep(5000);
             }
 
             Notify("Wifi", 0, "SSIDS", null);
@@ -312,7 +312,7 @@ export function connectSSID(ssid: SSID, password: string) {
                         } else {
                             connectToService(ser);
 
-                            setTimeout(() => scanWifi(), 500);
+                            //setTimeout(() => scanWifi(), 500);
                         }
                     });
                     return;
@@ -328,12 +328,12 @@ export function connectSSID(ssid: SSID, password: string) {
             (next) => {
                 console.log("Stopping hosting for connecting");
                 stopHosting();
-                setTimeout(next, 500);
+                setTimeout(next, 3000);
             },
             (next) => {
                 console.log("Scanning before connect");
                 scanWifi();
-                setTimeout(next, 1000);
+                setTimeout(next, 3000);
             },
             (next) => {
                 console.log("Trying to connect");
