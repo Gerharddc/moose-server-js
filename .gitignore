@@ -4,3 +4,4 @@ yarn.lock
 bunlde.js.map
 yarn-error.log
 build/*
+release/*
