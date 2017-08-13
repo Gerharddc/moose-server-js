@@ -16,7 +16,7 @@ const app = express();
 app.use(express.static("/home/printer/react"));
 
 app.get("*", (req, res) => {
-  res.sendFile("/home/printer//index.html");
+  res.sendFile("/home/printer/react/index.html");
 });
 
 app.get("/test", (req, res) => {
@@ -34,7 +34,7 @@ try {
 import { HandleRequest } from "./handlers";
 import { AddClient, RemoveClient } from "./notify";
 
-import { Server as WebSocketServer} from "ws";
+import { Server as WebSocketServer} from "uws";
 const wss = new WebSocketServer({ port: 8080 });
 console.log("Started websocket server");
 

@@ -11,19 +11,16 @@ gulp.task('makeTS', function() {
         .js.pipe(gulp.dest('lib/'));
 });
 
+const NativeExternals = {
+    "../build/Release/gcoder.node": "commonjs ../build/Release/gcoder.node",
+    "../build/Release/printer.node": "commonjs ../build/Release/printer.node"
+};
+
 gulp.task('bundleWorker', ['makeTS'], function() {
     return gulp.src('lib/fileWorker.js')
     .pipe(webpack({
         target: 'node',
-        externals: [nodeExternals()],
-        module: {
-            loaders: [
-                {
-                    test: /\.node$/,
-                    use: 'node-loader'
-                }
-            ]
-        },
+        externals: [nodeExternals(), NativeExternals],
         output: {
             filename: 'fileWorker.js'
         }
@@ -36,15 +33,7 @@ gulp.task('compile', ['makeTS', 'bundleWorker'], function() {
     return gulp.src('lib/index.js')
         .pipe(webpack({
             target: 'node',
-            externals: [nodeExternals()],
-            module: {
-                loaders: [
-                    {
-                        test: /\.node$/,
-                        use: 'node-loader'
-                    }
-                ]
-            },
+            externals: [nodeExternals(), NativeExternals],
             output: {
                 filename: 'bundle.js'
             }

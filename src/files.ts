@@ -3,6 +3,7 @@ import * as child_process from "child_process";
 import * as storage from "node-persist";
 import { Notify, NotifyError } from "./notify";
 import { millisToETA } from "./printer";
+import * as path from "path";
 
 export const rootPath = "/home/printer/";
 export const readyPath = rootPath + "ready/";
@@ -14,7 +15,7 @@ let processing = false;
 let procProg = 0;
 
 export function Init() {
-    workerProcess = child_process.fork(__dirname + "/fileWorker.js");
+    workerProcess = child_process.fork(path.resolve() + "/fileWorker.js");
     workerProcess.on("message", async (msg) => {
         switch (msg.type) {
             case "setFileTime":

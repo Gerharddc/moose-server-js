@@ -1,4 +1,4 @@
-import * as WebSocket from "ws";
+import * as WebSocket from "uws";
 
 let clients: WebSocket[] = [];
 
@@ -21,6 +21,17 @@ export function NotifyError(error: string) {
     const resp = JSON.stringify({
         error,
         status: "error",
+    });
+
+    clients.forEach((client) => {
+        client.send(resp);
+    });
+}
+
+export function NotifyInfo(info: string) {
+    const resp = JSON.stringify({
+        info,
+        status: "info",
     });
 
     clients.forEach((client) => {

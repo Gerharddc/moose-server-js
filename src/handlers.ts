@@ -304,7 +304,7 @@ const handlerFunctions: {[index: string]: HandlerFunction} = {
     },
 };
 
-import * as WebSocket from "ws";
+import * as WebSocket from "uws";
 
 export async function HandleRequest(message: string, client: WebSocket): Promise<string> {
     let id;

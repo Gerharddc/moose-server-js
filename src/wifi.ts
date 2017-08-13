@@ -1,7 +1,7 @@
 import * as async from "async";
 import * as ConnMan from "connman-node-api";
-import * as WebSocket from "ws";
-import { Notify, NotifyError } from "./notify";
+import * as WebSocket from "uws";
+import { Notify, NotifyError, NotifyInfo } from "./notify";
 
 class SSID {
     public Name: string;
@@ -171,15 +171,28 @@ export function getSSIDS() {
     return ssids;
 }
 
-export function scanWifi(callback: (() => void) | null = null) {
+async function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function scanWifi(callback: (() => void) | null = null) {
     if (!wifi) {
         throw new Error("Wifi technology not available");
     }
 
     console.log("Scanning...");
+
+    const resumeHost = Hosting;
+    if (resumeHost) {
+        NotifyInfo("Wifi hosting will be disabled to perform the scan. You will have to reconnect after 1 second.");
+        console.log("Disabling tether before scan");
+        stopHosting();
+        await sleep(1000);
+    }
+
     wifi.scan(() => {
         // Getting list of access points
-        wifi!.listAccessPoints((err, list) => {
+        wifi!.listAccessPoints(async (err, list) => {
             console.log("Got " + list.length + " Access Point(s)");
 
             ssids.length = 0;
@@ -188,6 +201,11 @@ export function scanWifi(callback: (() => void) | null = null) {
                     Name: ap.Name,
                     Secured: ap.Security !== "none",
                 });
+            }
+
+            if (resumeHost) {
+                startHosting(HostingSSID, HostingPWD);
+                await sleep(10000);
             }
 
             Notify("Wifi", 0, "SSIDS", null);
