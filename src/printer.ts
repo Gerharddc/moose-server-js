@@ -1,4 +1,5 @@
-import * as EventEmitter from "events";
+import { NotifyInfo } from './notify';
+import * as EventEmitter from 'events';
 
 class TempUpdateEmitter extends EventEmitter {
     public emitBedTemp(temp: number) {
@@ -12,9 +13,9 @@ class TempUpdateEmitter extends EventEmitter {
 
 export const tempUpdateEmitter = new TempUpdateEmitter();
 
-import * as Files from "./files";
+import * as Files from './files';
 import Heater from "./heater";
-import * as Notify from "./notify";
+import * as Notify from './notify';
 
 const heaters: Heater[] = [];
 
@@ -188,6 +189,29 @@ export async function printFile(fileName: string) {
     updateTimeLeft(0);
 
     setPrinting(true);
+}
+
+import * as LineByLineReader from 'line-by-line';
+
+export async function uploadFile(fileName: string) {
+    console.log('Uploading', fileName);
+    
+    Printer.SendLine('M28 ' + fileName);
+    const lr = new LineByLineReader(Files.readyPath + fileName);
+    
+    lr.on('error', (err) => {
+        console.log('LineReader error', err);
+    });
+
+    lr.on('line', (line) => {
+        Printer.SendLine(line);
+    });
+
+    lr.on('end', () => {
+        console.log('Done uploading');
+        NotifyInfo('Done uploading');
+        Printer.SendLine('M29');
+    });
 }
 
 export function pauseFilePrint() {

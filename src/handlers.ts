@@ -215,6 +215,14 @@ const handlerFunctions: {[index: string]: HandlerFunction} = {
         }
     },
 
+    UploadFile: (data: any, client: WebSocket) => {
+        try {
+            return Printer.uploadFile(data.path);
+        } catch (e) {
+            throw new Error("UploadFile: " + e.message);
+        }
+    },
+
     DeleteFile: (data: any, client: WebSocket) => {
         try {
             return Files.deleteFile(data.path);

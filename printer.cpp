@@ -365,7 +365,7 @@ static uv_async_t progAsync;
 
 static void SendFileWork(uv_work_t *req)
 {   
-    std::ifstream inFile(filePath);
+  std::ifstream inFile(filePath);
 
 	char lineBuf[150];
 	while(inFile.getline(lineBuf, 150) && printing && fd != -1) {
