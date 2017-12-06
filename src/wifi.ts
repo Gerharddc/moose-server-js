@@ -182,7 +182,7 @@ export async function scanWifi(callback: (() => void) | null = null) {
 
     const resumeHost = Hosting;
     if (resumeHost) {
-        NotifyInfo("Wifi hosting will be disabled to perform the scan. You will have to reconnect after 1 second.");
+        NotifyInfo("Wifi hosting will be disabled to perform the scan. You will have to reconnect after a few seconds.");
         console.log("Disabling tether before scan");
         stopHosting();
         await sleep(5000);
